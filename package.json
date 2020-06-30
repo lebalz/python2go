@@ -6,18 +6,27 @@
 	"engines": {
 		"vscode": "^1.46.0"
 	},
+    "homepage": "https://github.com/lebalz/python2go/blob/master/README.md",
+    "bugs": {
+        "url": "https://github.com/lebalz/python2go/issues"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/lebalz/python2go"
+    },
 	"categories": [
 		"Other"
 	],
 	"activationEvents": [
-        "onCommand:python2go.helloWorld"
+        "onCommand:python2go.install"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
 		"commands": [
 			{
-				"command": "python2go.helloWorld",
-                "title": "Hello World"
+				"command": "python2go.install",
+                "title": "Python2Go: Install"
 			}
 		]
 	},
