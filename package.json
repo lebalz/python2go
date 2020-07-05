@@ -18,6 +18,9 @@
 	"categories": [
 		"Other"
 	],
+	"extensionPack": [
+		"ms-python.python"
+	],
 	"activationEvents": [
         "onCommand:python2go.install"
 	],
