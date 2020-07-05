@@ -5,7 +5,97 @@ import { Progress } from "vscode";
 import { promisify } from "util";
 import { exec, execSync } from "child_process";
 
+// import * as http from 'http';
+import { DownloaderHelper } from 'node-downloader-helper';
+import * as fs from 'fs';
+import * as path from 'path';
+import { resolve } from "path";
+
 const PYTHON_VERSION = "3.8.3";
+
+
+/**
+ * Remove directory recursively
+ * @param {string} dir_path
+ * @see https://stackoverflow.com/a/42505874/3027390
+ */
+function rimraf(dir_path: string) {
+  if (fs.existsSync(dir_path)) {
+    fs.readdirSync(dir_path).forEach(function (entry) {
+      var entry_path = path.join(dir_path, entry);
+      if (fs.lstatSync(entry_path).isDirectory()) {
+        rimraf(entry_path);
+      } else {
+        fs.unlinkSync(entry_path);
+      }
+    });
+    fs.rmdirSync(dir_path);
+  }
+}
+
+function installPythonWindows(context: vscode.ExtensionContext) {
+
+  if (fs.existsSync(winInstallationLocation())) {
+    vscode.window.showInformationMessage("Python already installed");
+    return new Promise<boolean>((resolve) => resolve(true));
+  }
+
+  const pythonSrcFolder = `${context.extensionPath.split('\\').slice(0, -1).join('\\')}\\python`;
+  const downloadUri = `https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-amd64.exe`;
+
+  if (!fs.existsSync(pythonSrcFolder)) {
+    fs.mkdirSync(pythonSrcFolder, { recursive: true });
+  }
+
+  const tempFileName = `python_${PYTHON_VERSION}_${Date.now()}.exe`;
+  var tmpFilePath = `${pythonSrcFolder}\\${tempFileName}`;
+
+  const dl = new DownloaderHelper(
+    downloadUri,
+    pythonSrcFolder,
+    {
+      fileName: tempFileName,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36 Edg/80.0.361.66',
+        'Sec-Fetch-Dest': 'document',
+        'Upgrade-Insecure-Requests': 1
+      }
+    }
+  );
+
+  dl.on('end', () => {
+    vscode.window.showInformationMessage(`Start installing python ${PYTHON_VERSION}`);
+    const shellExec = promisify(exec);
+    return shellExec(
+      `start ${tmpFilePath} /quiet PrependPath=1 TargetDir="${winInstallationLocation()}"`
+    ).then(() => {
+      vscode.window.showInformationMessage("Done");
+      return true;
+    }).finally(() => {
+      rimraf(pythonSrcFolder);
+    });
+  });
+  vscode.window.showInformationMessage(`Start downloading python ${PYTHON_VERSION}`);
+  return dl.start();
+}
+
+function winInstallationLocation(): string {
+  const localDataPath = execSync('echo %LocalAppData%').toString().trim();
+  return `${localDataPath}\\Programs\\Python\\Python${PYTHON_VERSION.replace(/\./g, '')}`;
+}
+
+function osxInstallationLocation(): string {
+  return `~/.pyenv/versions/${PYTHON_VERSION}/bin/python`;
+}
+
+function installationLocation(): string {
+  if (process.platform === "darwin") {
+    return osxInstallationLocation();
+  } else if (process.platform === "win32") {
+    return winInstallationLocation();
+  }
+  return '';
+}
 
 function promptRootPassword(
   context: vscode.ExtensionContext
@@ -90,7 +180,7 @@ function installPythonWithPyEnv(
 
 function installPython(
   context: vscode.ExtensionContext
-): Promise<boolean | undefined> {
+): Promise<boolean> {
   if (process.platform === "darwin") {
     return installBrew(context).then((success) => {
       if (!success) {
@@ -99,30 +189,27 @@ function installPython(
       return installPythonWithPyEnv(context);
     });
   } else if (process.platform === "win32") {
-    return new Promise(() => false);
+    return installPythonWindows(context);
   }
-  return new Promise(() => false);
+  return new Promise((resolve) => resolve(false));;
 }
 
 function configure(context: vscode.ExtensionContext, force: boolean = false) {
+  vscode.window.showInformationMessage(`Configure python settings`);
   const configuration = vscode.workspace.getConfiguration();
-  if (process.platform === "darwin") {
-    return configuration
-      .update(
-        "python.pythonPath",
-        `~/.pyenv/versions/${PYTHON_VERSION}/bin/python`,
+  return configuration
+    .update(
+      "python.pythonPath",
+      installationLocation(),
+      vscode.ConfigurationTarget.Global
+    )
+    .then(() => {
+      configuration.update(
+        "python.defaultInterpreterPath",
+        installationLocation(),
         vscode.ConfigurationTarget.Global
-      )
-      .then(() => {
-        configuration.update(
-          "python.defaultInterpreterPath",
-          `~/.pyenv/versions/${PYTHON_VERSION}/bin/python`,
-          vscode.ConfigurationTarget.Global
-        );
-      });
-  } else if (process.platform === "win32") {
-  };
-  return new Promise(() => {});
+      );
+    });
 }
 
 // this method is called when your extension is activated
@@ -136,17 +223,18 @@ export function activate(context: vscode.ExtensionContext) {
   // Now provide the implementation of the command with registerCommand
   // The commandId parameter must match the command field in package.json
   let disposable = vscode.commands.registerCommand("python2go.install", () => {
-    installPython(context).then((success) => {
-      if (success) {
-        return configure(context, true);
-      }
-    }).then(() => {
-      vscode.window.showInformationMessage("Python installed and configured. Ready to go");
-    });
+    installPython(context)
+      .then((success) => {
+        if (success) {
+          return configure(context, true);
+        }
+      }).then(() => {
+        vscode.window.showInformationMessage("Python installed and configured. Ready to go");
+      });
   });
 
   context.subscriptions.push(disposable);
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }
