@@ -15,6 +15,11 @@
 		"type": "git",
 		"url": "https://github.com/lebalz/python2go"
 	},
+	"galleryBanner": {
+		"color": "#0b1b3d",
+		"theme": "dark"
+	},
+	"icon": "logo.png",
 	"categories": [
 		"Other"
 	],
@@ -22,7 +27,8 @@
 		"ms-python.python"
 	],
 	"activationEvents": [
-		"onCommand:python2go.install"
+		"onCommand:python2go.install",
+		"onCommand:python2go.configure"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -30,6 +36,10 @@
 			{
 				"command": "python2go.install",
 				"title": "Python2Go: Install"
+			},
+			{
+				"command": "python2go.configure",
+				"title": "Python2Go: Configure"
 			}
 		]
 	},
