@@ -1,6 +1,7 @@
 {
 	"name": "python2go",
 	"displayName": "python2go",
+	"publisher": "lebalz",
 	"description": "install and configure python to start straight away",
 	"version": "0.0.1",
 	"engines": {
