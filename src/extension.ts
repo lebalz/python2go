@@ -1,7 +1,6 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
-import { Progress } from "vscode";
 import { promisify } from "util";
 import { exec, execSync } from "child_process";
 
@@ -13,6 +12,11 @@ import { resolve } from "path";
 
 const PYTHON_VERSION = "3.8.3";
 
+
+type Progress = vscode.Progress<{
+  message?: string | undefined;
+  increment?: number | undefined;
+}>;
 
 /**
  * Remove directory recursively
@@ -33,9 +37,9 @@ function rimraf(dir_path: string) {
   }
 }
 
-function installPythonWindows(context: vscode.ExtensionContext) {
-
+function installPythonWindows(context: vscode.ExtensionContext, progress: Progress) {
   if (fs.existsSync(winInstallationLocation())) {
+    progress.report({message: `Python ${PYTHON_VERSION} already installed (${winInstallationLocation()})`, increment: 70});
     vscode.window.showInformationMessage("Python already installed");
     return new Promise<boolean>((resolve) => resolve(true));
   }
@@ -66,10 +70,12 @@ function installPythonWindows(context: vscode.ExtensionContext) {
   dl.on('end', () => {
     vscode.window.showInformationMessage(`Start installing python ${PYTHON_VERSION}`);
     const shellExec = promisify(exec);
+    progress.report({message: `Install Python ${PYTHON_VERSION}`, increment: 40});
     return shellExec(
       `start ${tmpFilePath} /quiet PrependPath=1 TargetDir="${winInstallationLocation()}"`
     ).then(() => {
       vscode.window.showInformationMessage("Done");
+      progress.report({message: `Python ${PYTHON_VERSION} installed (${winInstallationLocation()})`, increment: 70});
       return true;
     }).finally(() => {
       rimraf(pythonSrcFolder);
@@ -123,11 +129,13 @@ function isBrewInstalled() {
 }
 
 function installBrew(
-  context: vscode.ExtensionContext
+  context: vscode.ExtensionContext,
+  progress: Progress
 ): Promise<boolean | undefined> {
   return isBrewInstalled()
     .then((isInstalled) => {
       if (isInstalled) {
+        progress.report({ message: 'Brew installed', increment: 30 });
         return true;
       }
       promptRootPassword(context)
@@ -136,6 +144,7 @@ function installBrew(
             return { stdout: "", stderr: "ERROR: no root password" };
           }
           const shellExec = promisify(exec);
+          progress.report({ message: 'Install brew...', increment: 10 });
           return shellExec(
             `cat -s ${`${context.extensionPath}/bin/install_brew.sh`} | bash -s "${rootPW}" && echo "Success."`
           );
@@ -147,6 +156,7 @@ function installBrew(
             );
             return false;
           }
+          progress.report({ message: 'Brew installed', increment: 30 });
           return true;
         });
     })
@@ -157,9 +167,11 @@ function installBrew(
 }
 
 function installPythonWithPyEnv(
-  context: vscode.ExtensionContext
+  context: vscode.ExtensionContext,
+  progress: Progress
 ): Promise<boolean> {
   const shellExec = promisify(exec);
+  progress.report({message: `Install PyEnv and Python ${PYTHON_VERSION}`, increment: 35});
   return shellExec(
     `cat -s ${`${context.extensionPath}/bin/install_pyenv_python.sh`} | bash -s "${PYTHON_VERSION}" && echo "Success."`
   )
@@ -170,6 +182,7 @@ function installPythonWithPyEnv(
         );
         return false;
       }
+      progress.report({message: 'PyEnv Installed', increment: 70});
       return true;
     })
     .catch((error) => {
@@ -179,17 +192,18 @@ function installPythonWithPyEnv(
 }
 
 function installPython(
-  context: vscode.ExtensionContext
+  context: vscode.ExtensionContext,
+  progress: Progress
 ): Promise<boolean> {
   if (process.platform === "darwin") {
-    return installBrew(context).then((success) => {
+    return installBrew(context, progress).then((success) => {
       if (!success) {
         return false;
       }
-      return installPythonWithPyEnv(context);
+      return installPythonWithPyEnv(context, progress);
     });
   } else if (process.platform === "win32") {
-    return installPythonWindows(context);
+    return installPythonWindows(context, progress);
   }
   return new Promise((resolve) => resolve(false));;
 }
@@ -222,18 +236,34 @@ export function activate(context: vscode.ExtensionContext) {
   // The command has been defined in the package.json file
   // Now provide the implementation of the command with registerCommand
   // The commandId parameter must match the command field in package.json
-  let disposable = vscode.commands.registerCommand("python2go.install", () => {
-    installPython(context)
-      .then((success) => {
-        if (success) {
-          return configure(context, true);
-        }
-      }).then(() => {
-        vscode.window.showInformationMessage("Python installed and configured. Ready to go");
-      });
+  let installDisposer = vscode.commands.registerCommand("python2go.install", () => {
+    vscode.window.withProgress({
+      location: vscode.ProgressLocation.Notification,
+      title: '[Python2go]: Install',
+      cancellable: false
+    }, (progress, _token) => {
+      progress.report({ message: 'Start...', increment: 5 });
+      return installPython(context, progress)
+        .then((success) => {
+          if (success) {
+            progress.report({ message: "Configure...", increment: 95 });
+            return configure(context, true);
+          }
+        }).then(() => {
+          progress.report({ message: "Success", increment: 100 });
+          vscode.window.showInformationMessage("Python installed and configured. Ready to go");
+        });
+    });
   });
 
-  context.subscriptions.push(disposable);
+  let configureDisposer = vscode.commands.registerCommand("python2go.configure", () => {
+    configure(context, true).then(() => {
+      vscode.window.showInformationMessage("Python configured. Ready to go");
+    });
+  });
+
+  context.subscriptions.push(installDisposer);
+  context.subscriptions.push(configureDisposer);
 }
 
 // this method is called when your extension is deactivated
