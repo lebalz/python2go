@@ -11,7 +11,7 @@ fi
 echo "installing pyenv"
 brew install pyenv
 
-if ! pyenv version | grep $PYTHON_VERSION; then
+if ! pyenv versions | grep $PYTHON_VERSION; then
   # make sure tcl-tk is installed s.t. it can be configured for python
   echo "installing tkinter©"
   brew install tcl-tk
@@ -31,6 +31,7 @@ else
   echo "python $PYTHON_VERSION already installed"
 fi
 
+echo "setting $PYTHON_VERSION as global python interpreter"
 pyenv global $PYTHON_VERSION
 
 touch ~/.zshrc

@@ -17,8 +17,8 @@
 		"url": "https://github.com/lebalz/python2go"
 	},
 	"galleryBanner": {
-		"color": "#0b1b3d",
-		"theme": "dark"
+		"color": "#e9e9e9",
+		"theme": "light"
 	},
 	"icon": "logo.png",
 	"categories": [
@@ -29,7 +29,8 @@
 	],
 	"activationEvents": [
 		"onCommand:python2go.install",
-		"onCommand:python2go.configure"
+		"onCommand:python2go.configure",
+		"onCommand:python2go.uninstall"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -41,6 +42,10 @@
 			{
 				"command": "python2go.configure",
 				"title": "Python2Go: Configure"
+			},
+			{
+				"command": "python2go.uninstall",
+				"title": "Python2Go: Uninstall"
 			}
 		]
 	},
@@ -67,8 +72,10 @@
 	},
 	"dependencies": {
 		"@types/node-downloader-helper": "^1.0.2",
+		"@types/node-powershell": "^3.1.1",
 		"@types/node-windows": "^0.1.0",
 		"node-downloader-helper": "^1.0.13",
+		"node-powershell": "^4.0.0",
 		"node-windows": "^1.0.0-beta.1"
 	}
 }

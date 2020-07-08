@@ -2,176 +2,108 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
 import { promisify } from "util";
-import { exec, execSync } from "child_process";
+import { exec } from "child_process";
 
-// import * as http from 'http';
-import { DownloaderHelper } from 'node-downloader-helper';
 import * as fs from 'fs';
-import * as path from 'path';
-import { resolve } from "path";
+import { installChocolatey, powershell, inElevatedShell, logSummary, uninstall as chocoUninstall, inShell } from "./chocolatey";
+import { vscodeInstallBrew } from "./homebrew";
+import { Progress } from './helpers';
 
 const PYTHON_VERSION = "3.8.3";
-
-
-type Progress = vscode.Progress<{
-  message?: string | undefined;
-  increment?: number | undefined;
-}>;
-
-/**
- * Remove directory recursively
- * @param {string} dir_path
- * @see https://stackoverflow.com/a/42505874/3027390
- */
-function rimraf(dir_path: string) {
-  if (fs.existsSync(dir_path)) {
-    fs.readdirSync(dir_path).forEach(function (entry) {
-      var entry_path = path.join(dir_path, entry);
-      if (fs.lstatSync(entry_path).isDirectory()) {
-        rimraf(entry_path);
-      } else {
-        fs.unlinkSync(entry_path);
-      }
-    });
-    fs.rmdirSync(dir_path);
-  }
-}
+const CHOCO_LOG_VERSION_REGEXP = new RegExp(`Successfully installed 'python3 ${PYTHON_VERSION}'\.\r?\n(.*\r?\n)+?.*Installed to: '(?<location>.*)'`, 'gi');
+const CHOCO_LOG_LOCATION_REGEXP = /Installed to: '(?<location>.*)'/i;
+const CHOCO_LOG_ALREADY_INSTALLED = /python .* already installed/i;
 
 function installPythonWindows(context: vscode.ExtensionContext, progress: Progress) {
-  if (fs.existsSync(winInstallationLocation())) {
-    progress.report({message: `Python ${PYTHON_VERSION} already installed (${winInstallationLocation()})`, increment: 70});
-    vscode.window.showInformationMessage("Python already installed");
-    return new Promise<boolean>((resolve) => resolve(true));
-  }
-
-  const pythonSrcFolder = `${context.extensionPath.split('\\').slice(0, -1).join('\\')}\\python`;
-  const downloadUri = `https://www.python.org/ftp/python/${PYTHON_VERSION}/python-${PYTHON_VERSION}-amd64.exe`;
-
-  if (!fs.existsSync(pythonSrcFolder)) {
-    fs.mkdirSync(pythonSrcFolder, { recursive: true });
-  }
-
-  const tempFileName = `python_${PYTHON_VERSION}_${Date.now()}.exe`;
-  var tmpFilePath = `${pythonSrcFolder}\\${tempFileName}`;
-
-  const dl = new DownloaderHelper(
-    downloadUri,
-    pythonSrcFolder,
-    {
-      fileName: tempFileName,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.132 Safari/537.36 Edg/80.0.361.66',
-        'Sec-Fetch-Dest': 'document',
-        'Upgrade-Insecure-Requests': 1
-      }
+  progress.report({ message: 'Install Chocolatey', increment: 20 });
+  return installChocolatey().then((version) => {
+    if (!version) {
+      vscode.window.showErrorMessage("Could not install the package manager 'chocolatey'. Make sure to install it manually.");
+      return undefined;
     }
-  );
 
-  dl.on('end', () => {
-    vscode.window.showInformationMessage(`Start installing python ${PYTHON_VERSION}`);
-    const shellExec = promisify(exec);
-    progress.report({message: `Install Python ${PYTHON_VERSION}`, increment: 40});
-    return shellExec(
-      `start ${tmpFilePath} /quiet PrependPath=1 TargetDir="${winInstallationLocation()}"`
-    ).then(() => {
-      vscode.window.showInformationMessage("Done");
-      progress.report({message: `Python ${PYTHON_VERSION} installed (${winInstallationLocation()})`, increment: 70});
-      return true;
-    }).finally(() => {
-      rimraf(pythonSrcFolder);
+    progress.report({ message: `Chocolatey '${version}' Installed`, increment: 40 });
+
+    if (!fs.existsSync(`${context.extensionPath}\\logs`)) {
+      fs.mkdirSync(`${context.extensionPath}\\logs`);
+    }
+
+    const logPath = `${context.extensionPath}\\logs\\chocolog_${Date.now()}.log`;
+
+    return inElevatedShell(
+      `choco install -y python3 --side-by-side --version=${PYTHON_VERSION} | Tee-Object -FilePath ${logPath} | Write-Output`
+    ).then((out) => {
+      progress.report({ message: `Python installed:\n${out}`, increment: 80 });
+      const ps = powershell();
+      ps.addCommand(`Get-Content -Path ${logPath}`);
+      return ps.invoke().then((log) => {
+        const alreadyInstalled = CHOCO_LOG_ALREADY_INSTALLED.test(log);
+        if (alreadyInstalled) {
+          return winInstallationLocation();
+        }
+
+        console.log(log);
+        const match = log.match(CHOCO_LOG_LOCATION_REGEXP);
+        const installLocation = match?.groups?.location;
+        return installLocation;
+      });
+    }).catch((error) => {
+      vscode.window.showErrorMessage(`Trouble installing python:\n${error}`);
+      return undefined;
     });
   });
-  vscode.window.showInformationMessage(`Start downloading python ${PYTHON_VERSION}`);
-  return dl.start();
 }
 
-function winInstallationLocation(): string {
-  const localDataPath = execSync('echo %LocalAppData%').toString().trim();
-  return `${localDataPath}\\Programs\\Python\\Python${PYTHON_VERSION.replace(/\./g, '')}`;
+function winInstallationLocation(): Promise<string> {
+  return logSummary().then((summary) => {
+    const installations = summary.match(CHOCO_LOG_VERSION_REGEXP);
+    const locations = installations?.map((install) => {
+      const locationMatch = install.match(CHOCO_LOG_LOCATION_REGEXP);
+      return locationMatch!.groups!.location;
+    }) ?? [];
+    return locations[locations.length - 1];
+  });
 }
 
 function osxInstallationLocation(): string {
   return `~/.pyenv/versions/${PYTHON_VERSION}/bin/python`;
 }
 
-function installationLocation(): string {
+function isPythonInstalled(): Promise<boolean> {
   if (process.platform === "darwin") {
-    return osxInstallationLocation();
+    const shellExec = promisify(exec);
+    return shellExec(`pyenv version | grep ${PYTHON_VERSION}`).then(({ stdout, stderr }) => {
+      if (stderr.length > 0) {
+        return false;
+      }
+      if (stdout.length === 0) {
+        return false;
+      }
+      return true;
+    }).catch(() => false);
+  } else if (process.platform === "win32") {
+    return inShell(`choco list -lo python3 --version ${PYTHON_VERSION}`).then((result) => {
+      return /1 packages installed\./i.test(result);
+    }).catch(() => false);
+  }
+  return new Promise((resolve) => resolve(false));
+}
+
+function installationLocation(): Promise<string> {
+  if (process.platform === "darwin") {
+    return new Promise((resolve) => resolve(osxInstallationLocation()));
   } else if (process.platform === "win32") {
     return winInstallationLocation();
   }
-  return '';
-}
-
-function promptRootPassword(
-  context: vscode.ExtensionContext
-): Thenable<string | undefined> {
-  return vscode.window.showInputBox({
-    password: true,
-    prompt: "Root Password (used to login to your computer)",
-  });
-}
-
-function isBrewInstalled() {
-  const shellExec = promisify(exec);
-  return shellExec("brew -v")
-    .then(({ stdout, stderr }) => {
-      if (stdout.length > 0) {
-        vscode.window.showInformationMessage("Brew already installed...");
-        return true;
-      }
-      vscode.window.showErrorMessage(stderr);
-      return false;
-    })
-    .catch(() => {
-      return false;
-    });
-}
-
-function installBrew(
-  context: vscode.ExtensionContext,
-  progress: Progress
-): Promise<boolean | undefined> {
-  return isBrewInstalled()
-    .then((isInstalled) => {
-      if (isInstalled) {
-        progress.report({ message: 'Brew installed', increment: 30 });
-        return true;
-      }
-      promptRootPassword(context)
-        .then((rootPW) => {
-          if (!rootPW) {
-            return { stdout: "", stderr: "ERROR: no root password" };
-          }
-          const shellExec = promisify(exec);
-          progress.report({ message: 'Install brew...', increment: 10 });
-          return shellExec(
-            `cat -s ${`${context.extensionPath}/bin/install_brew.sh`} | bash -s "${rootPW}" && echo "Success."`
-          );
-        })
-        .then(({ stdout, stderr }) => {
-          if (!stdout || !stdout.endsWith("Success.\n")) {
-            vscode.window.showErrorMessage(
-              `Could not install install brew. Try to install it manually and try the setup process again.\n${stderr}`
-            );
-            return false;
-          }
-          progress.report({ message: 'Brew installed', increment: 30 });
-          return true;
-        });
-    })
-    .catch((error) => {
-      vscode.window.showErrorMessage(error);
-      return false;
-    });
+  return new Promise((resolve) => resolve(''));
 }
 
 function installPythonWithPyEnv(
   context: vscode.ExtensionContext,
   progress: Progress
-): Promise<boolean> {
+): Promise<string | undefined> {
   const shellExec = promisify(exec);
-  progress.report({message: `Install PyEnv and Python ${PYTHON_VERSION}`, increment: 35});
+  progress.report({ message: `Install PyEnv and Python ${PYTHON_VERSION}`, increment: 35 });
   return shellExec(
     `cat -s ${`${context.extensionPath}/bin/install_pyenv_python.sh`} | bash -s "${PYTHON_VERSION}" && echo "Success."`
   )
@@ -180,50 +112,90 @@ function installPythonWithPyEnv(
         vscode.window.showErrorMessage(
           `Could not install install python.\n${stderr}`
         );
-        return false;
+        return undefined;
       }
-      progress.report({message: 'PyEnv Installed', increment: 70});
-      return true;
+      progress.report({ message: 'PyEnv Installed', increment: 70 });
+      return osxInstallationLocation();
     })
     .catch((error) => {
       vscode.window.showErrorMessage(error);
-      return false;
+      return undefined;
     });
 }
 
+/**
+ * @return [Promise<string | undefined>]
+ *    on success:         returns the location of the python executable
+ *    error:              undefined
+ */
 function installPython(
   context: vscode.ExtensionContext,
   progress: Progress
-): Promise<boolean> {
-  if (process.platform === "darwin") {
-    return installBrew(context, progress).then((success) => {
-      if (!success) {
-        return false;
-      }
-      return installPythonWithPyEnv(context, progress);
-    });
-  } else if (process.platform === "win32") {
-    return installPythonWindows(context, progress);
-  }
-  return new Promise((resolve) => resolve(false));;
+): Promise<string | undefined> {
+  return isPythonInstalled().then((isInstalled) => {
+    if (isInstalled) {
+      return installationLocation();
+    }
+    if (process.platform === "darwin") {
+      return vscodeInstallBrew(context, progress, 30).then((success) => {
+        if (!success) {
+          return undefined;
+        }
+        return installPythonWithPyEnv(context, progress);
+      });
+    } else if (process.platform === "win32") {
+      return installPythonWindows(context, progress);
+    }
+  }).catch(() => undefined);
 }
 
-function configure(context: vscode.ExtensionContext, force: boolean = false) {
+function uninstallPython(context: vscode.ExtensionContext) {
+  vscode.window.showInformationMessage(`Uninstalling Python`);
+  return isPythonInstalled().then((isInstalled) => {
+    if (!isInstalled) {
+      throw new Error(`Python ${PYTHON_VERSION} was not installed.`);
+    }
+    if (process.platform === "darwin") {
+      const shellExec = promisify(exec);
+      return shellExec(
+        `cat -s ${`${context.extensionPath}/bin/uninstall_python.sh`} | bash -s "${PYTHON_VERSION}"`
+      ).then(({ stdout, stderr }) => {
+        if (stderr.length > 0) {
+          throw new Error(stderr);
+        }
+        return stdout;
+      });
+    } else if (process.platform === "win32") {
+      return chocoUninstall('python3', PYTHON_VERSION);
+    }
+    throw new Error('Platform not supported');
+  });
+}
+
+function configure(location?: string) {
+  if (location?.length === 0) {
+    throw new Error('No installation path provided');
+  }
   vscode.window.showInformationMessage(`Configure python settings`);
-  const configuration = vscode.workspace.getConfiguration();
-  return configuration
-    .update(
-      "python.pythonPath",
-      installationLocation(),
-      vscode.ConfigurationTarget.Global
-    )
-    .then(() => {
-      configuration.update(
-        "python.defaultInterpreterPath",
-        installationLocation(),
+  return isPythonInstalled().then((isInstalled) => {
+    if (!isInstalled) {
+      vscode.window.showErrorMessage(`Python ${PYTHON_VERSION} is not installed.`);
+    }
+    const configuration = vscode.workspace.getConfiguration();
+    configuration
+      .update(
+        "python.pythonPath",
+        isInstalled ? location : undefined,
         vscode.ConfigurationTarget.Global
-      );
-    });
+      )
+      .then(() => {
+        configuration.update(
+          "python.defaultInterpreterPath",
+          isInstalled ? location : undefined,
+          vscode.ConfigurationTarget.Global
+        );
+      });
+  });
 }
 
 // this method is called when your extension is activated
@@ -240,30 +212,49 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.withProgress({
       location: vscode.ProgressLocation.Notification,
       title: '[Python2go]: Install',
-      cancellable: false
+      cancellable: true
     }, (progress, _token) => {
       progress.report({ message: 'Start...', increment: 5 });
       return installPython(context, progress)
-        .then((success) => {
-          if (success) {
-            progress.report({ message: "Configure...", increment: 95 });
-            return configure(context, true);
+        .then((location) => {
+          if (!location) {
+            throw new Error('Installation failed.');
           }
+          progress.report({ message: "Configure...", increment: 95 });
+          return configure(location);
         }).then(() => {
           progress.report({ message: "Success", increment: 100 });
           vscode.window.showInformationMessage("Python installed and configured. Ready to go");
+        }).catch((err) => {
+          progress.report({ message: "Error", increment: 100 });
+          vscode.window.showErrorMessage(`Python could not be installed.\n${err}`);
         });
     });
   });
 
   let configureDisposer = vscode.commands.registerCommand("python2go.configure", () => {
-    configure(context, true).then(() => {
-      vscode.window.showInformationMessage("Python configured. Ready to go");
+    installationLocation().then(
+      (location) => {
+        return configure(location);
+      }
+    ).catch((error) => {
+      vscode.window.showInformationMessage(`Could not update configuration: ${error}`);
+    });
+  });
+
+
+  let uninstallDisposer = vscode.commands.registerCommand("python2go.uninstall", () => {
+    uninstallPython(context).then((msg) => {
+      configure(undefined);
+      vscode.window.showInformationMessage(`Uninstalled Python ${PYTHON_VERSION}.\n${msg}`);
+    }).catch((err) => {
+      vscode.window.showErrorMessage(`Could not uninstall Python ${PYTHON_VERSION}:\n${err}`);
     });
   });
 
   context.subscriptions.push(installDisposer);
   context.subscriptions.push(configureDisposer);
+  context.subscriptions.push(uninstallDisposer);
 }
 
 // this method is called when your extension is deactivated
