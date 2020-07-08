@@ -46,31 +46,37 @@ export function vscodeInstallBrew(
   context: vscode.ExtensionContext,
   progress: Progress,
   progressOnSuccess: number
-): Promise<boolean | undefined> {
-  return isBrewInstalled()
-    .then((isInstalled) => {
-      if (isInstalled) {
-        progress.report({ message: 'Brew installed', increment: progressOnSuccess });
-        return true;
-      }
-      promptRootPassword()
-        .then((rootPW) => {
-          if (!rootPW) {
-            return { stdout: "", stderr: "ERROR: no root password" };
-          }
-          return installBrew(context.extensionPath, rootPW).then((success) => {
-            if (success) {
-              progress.report({ message: 'Brew installed', increment: progressOnSuccess });
-              return true;
+): Thenable<boolean | undefined> {
+  return vscode.window.withProgress({
+    location: vscode.ProgressLocation.Notification,
+    title: '[Python2go]: Install Homebrew',
+    cancellable: false
+  }, (progress, _token) => {
+    return isBrewInstalled()
+      .then((isInstalled) => {
+        if (isInstalled) {
+          progress.report({ message: 'Brew installed', increment: progressOnSuccess });
+          return true;
+        }
+        promptRootPassword()
+          .then((rootPW) => {
+            if (!rootPW) {
+              return { stdout: "", stderr: "ERROR: no root password" };
             }
-            vscode.window.showErrorMessage(
-              `Could not install install brew. Try to install it manually and try the setup process again.`
-            );
-            return false;
+            return installBrew(context.extensionPath, rootPW).then((success) => {
+              if (success) {
+                progress.report({ message: 'Brew installed', increment: progressOnSuccess });
+                return true;
+              }
+              vscode.window.showErrorMessage(
+                `Could not install install brew. Try to install it manually and try the setup process again.`
+              );
+              return false;
+            });
           });
-        });
-    }).catch((error) => {
-      vscode.window.showErrorMessage(error);
-      return false;
-    });
+      }).catch((error) => {
+        vscode.window.showErrorMessage(error);
+        return false;
+      });
+  });
 }
