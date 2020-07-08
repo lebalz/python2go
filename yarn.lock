@@ -56,24 +56,10 @@
   resolved "https://registry.yarnpkg.com/@types/mocha/-/mocha-7.0.2.tgz#b17f16cf933597e10d6d78eae3251e692ce8b0ce"
   integrity sha512-ZvO2tAcjmMi8V/5Z3JsyofMe3hasRcaw88cto5etSVMwVQfeivGAlEYmaQgceUSVYFofVjT+ioHsATjdWcFt1w==
 
-"@types/node-downloader-helper@^1.0.2":
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/@types/node-downloader-helper/-/node-downloader-helper-1.0.2.tgz#bc40f77935737aba6c21815ff33a9d2ba804187b"
-  integrity sha512-cjlqlWp7Vk2DJnypqqZUCB9qMuADf40nqikS7Tps6H8GZq7SXheBBHbERTvjnMMWZ5pFRbxSWdWUdqiKL8EQIg==
-  dependencies:
-    "@types/node" "*"
-
 "@types/node-powershell@^3.1.1":
   version "3.1.1"
   resolved "https://registry.yarnpkg.com/@types/node-powershell/-/node-powershell-3.1.1.tgz#20dbb61b80b57df9ef2031211ed1e971ad8e5fcc"
   integrity sha512-TpFjc4uSvXWkEaoWDSOc9TrAzxNMqEz5e4bYNkXjnDh/SH7OVTmPAbaX6dK9Y3ToE5qE/m9b0c2nAgs/5AB47Q==
-  dependencies:
-    "@types/node" "*"
-
-"@types/node-windows@^0.1.0":
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/@types/node-windows/-/node-windows-0.1.0.tgz#4226023b0b6b0a266abd3e5c3646c3319e782f7b"
-  integrity sha512-Av/6S5B6OoY5y1DFXHzgMroAixUk/uvHmJhoJ5E3jsK/cFJoJzvh0kIHK+kp5w/qtWc+h3peQzqGAGPDgEu/hQ==
   dependencies:
     "@types/node" "*"
 
@@ -963,11 +949,6 @@ minimist@^1.2.5:
   resolved "https://registry.yarnpkg.com/minimist/-/minimist-1.2.5.tgz#67d66014b66a6a8aaa0c083c5fd58df4e4e97602"
   integrity sha512-FM9nNUYrRBAELZQT3xeZQ7fmMOBg6nWNmJKTcgsJeaLstP/UODVpGsr5OhXhhXg6f+qtJ8uiZ+PUxkDWcgIXLw==
 
-minimist@~0.0.1:
-  version "0.0.10"
-  resolved "https://registry.yarnpkg.com/minimist/-/minimist-0.0.10.tgz#de3f98543dbf96082be48ad1a0c7cda836301dcf"
-  integrity sha1-3j+YVD2/lggr5IrRoMfNqDYwHc8=
-
 mkdirp@0.5.5, mkdirp@^0.5.1:
   version "0.5.5"
   resolved "https://registry.yarnpkg.com/mkdirp/-/mkdirp-0.5.5.tgz#d91cefd62d1436ca0f41620e251288d420099def"
@@ -1040,11 +1021,6 @@ nice-try@^1.0.4:
   resolved "https://registry.yarnpkg.com/nice-try/-/nice-try-1.0.5.tgz#a3378a7696ce7d223e88fc9b764bd7ef1089e366"
   integrity sha512-1nh45deeb5olNY7eX82BkPO7SSxR5SSYJiPTrTdFUVYwAl8CKMA5N9PjTYkHiRjisVcxcQ1HXdLhx2qxxJzLNQ==
 
-node-downloader-helper@^1.0.13:
-  version "1.0.13"
-  resolved "https://registry.yarnpkg.com/node-downloader-helper/-/node-downloader-helper-1.0.13.tgz#bbed82ba9c5b0722d56cbb8770c0300f7785a400"
-  integrity sha512-HdwSd8tnC06dIWLFBSTGHlcPKXo308815J4m/1e/NkSd6gmdDaO6KSf9JON5fXt3R5Vdw5bgQvSrgSq4GXjYvg==
-
 node-environment-flags@1.0.6:
   version "1.0.6"
   resolved "https://registry.yarnpkg.com/node-environment-flags/-/node-environment-flags-1.0.6.tgz#a30ac13621f6f7d674260a54dede048c3982c088"
@@ -1060,14 +1036,6 @@ node-powershell@^4.0.0:
   dependencies:
     chalk "^2.4.1"
     shortid "^2.2.14"
-
-node-windows@^1.0.0-beta.1:
-  version "1.0.0-beta.1"
-  resolved "https://registry.yarnpkg.com/node-windows/-/node-windows-1.0.0-beta.1.tgz#a3442389c2981a5f504777172a50c912c5df2e6b"
-  integrity sha512-wWAM7zRvu4ZrBGsEI+7oGcoGr5jEeHgxzdx4DNEFddK/gh1yOsy782nCcShjOZ4Kffy8zDfmCw0Femxvib/5Rw==
-  dependencies:
-    optimist "~0.6.0"
-    xml "0.0.12"
 
 normalize-path@^3.0.0, normalize-path@~3.0.0:
   version "3.0.0"
@@ -1115,14 +1083,6 @@ onetime@^5.1.0:
   integrity sha512-5NcSkPHhwTVFIQN+TUqXoS5+dlElHXdpAWu9I0HP20YOtIi+aZ0Ct82jdlILDxjLEAWwvm+qj1m6aEtsDVmm6Q==
   dependencies:
     mimic-fn "^2.1.0"
-
-optimist@~0.6.0:
-  version "0.6.1"
-  resolved "https://registry.yarnpkg.com/optimist/-/optimist-0.6.1.tgz#da3ea74686fa21a19a111c326e90eb15a0196686"
-  integrity sha1-2j6nRob6IaGaERwybpDrFaAZZoY=
-  dependencies:
-    minimist "~0.0.1"
-    wordwrap "~0.0.2"
 
 optionator@^0.8.3:
   version "0.8.3"
@@ -1538,11 +1498,6 @@ word-wrap@~1.2.3:
   resolved "https://registry.yarnpkg.com/word-wrap/-/word-wrap-1.2.3.tgz#610636f6b1f703891bd34771ccb17fb93b47079c"
   integrity sha512-Hz/mrNwitNRh/HUAtM/VT/5VH+ygD6DV7mYKZAtHOrbs8U7lvPS6xf7EJKMF0uW1KJCl0H701g3ZGus+muE5vQ==
 
-wordwrap@~0.0.2:
-  version "0.0.3"
-  resolved "https://registry.yarnpkg.com/wordwrap/-/wordwrap-0.0.3.tgz#a3d5da6cd5c0bc0008d37234bbaf1bed63059107"
-  integrity sha1-o9XabNXAvAAI03I0u68b7WMFkQc=
-
 wrap-ansi@^5.1.0:
   version "5.1.0"
   resolved "https://registry.yarnpkg.com/wrap-ansi/-/wrap-ansi-5.1.0.tgz#1fd1f67235d5b6d0fee781056001bfb694c03b09"
@@ -1563,11 +1518,6 @@ write@1.0.3:
   integrity sha512-/lg70HAjtkUgWPVZhZcm+T4hkL8Zbtp1nFNOn3lRrxnlv50SRBv7cR7RqR+GMsd3hUXy9hWBo4CHTbFTcOYwig==
   dependencies:
     mkdirp "^0.5.1"
-
-xml@0.0.12:
-  version "0.0.12"
-  resolved "https://registry.yarnpkg.com/xml/-/xml-0.0.12.tgz#f08b347109912be00285785f46f15ad8e50a5f67"
-  integrity sha1-8Is0cQmRK+AChXhfRvFa2OUKX2c=
 
 y18n@^4.0.0:
   version "4.0.0"
