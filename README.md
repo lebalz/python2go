@@ -15,13 +15,13 @@ Python2go installs a recent Version of Python (inlcuding tkinter) to your window
 
 A recent version (3.8.3) is downloaded and installed. Tkinter and test suite are included and the exe will be added to your PATH.
 
-The packagemanager [chocolatey]() is used to install python. Chocolatey is installed when not present on the system. Admin rights are needed to install chocolatey and python - you will be prompted to confirm admin rights to powershell. 
+The packagemanager [chocolatey](https://chocolatey.org/) is used to install python. Chocolatey is installed when not present on the system. Admin rights are needed to install chocolatey and python - you will be prompted to confirm admin rights to powershell. 
 
 ## OSX
 
-A recent version (3.8.3) is downloaded and installed. Tkinter and test suite are included and the installed python will be set as the global python interpreter for bash and zsh shells.
+A recent version (3.8.3) is downloaded and installed. Tkinter is included and the installed python will be set as the global python interpreter for bash and zsh shells.
 
-The packagemanager [homebrew]() is used to install [pyenv]. Pyenv is used to manage different python installations and to install a recent version of python. Superuser rights are needed to install homebrew - you will be prompted for your password if homebrew is not installed yet.
+The packagemanager [homebrew](https://brew.sh/index_de) is used to install [pyenv](https://github.com/pyenv/pyenv). Pyenv is used to manage different python installations and to install a recent version of python. Superuser rights are needed to install homebrew - you will be prompted for your password if homebrew is not installed yet.
 
 # Commands
 
