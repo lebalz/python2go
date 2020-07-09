@@ -1,0 +1,3 @@
+[submodule "src/package-manager"]
+	path = src/package-manager
+	url = git@github.com:lebalz/vscode-package-manager

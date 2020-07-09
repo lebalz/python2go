@@ -12,9 +12,9 @@ import {
   logSummary,
   uninstall as chocoUninstall,
   inShell,
-} from "./chocolatey";
-import { vscodeInstallBrew } from "./homebrew";
-import { Progress } from "./helpers";
+} from "./package-manager/src/chocolatey";
+import { vscodeInstallBrew } from "./package-manager/src/homebrew";
+import { Progress } from "./package-manager/src/helpers";
 
 const PYTHON_VERSION = "3.8.3";
 const CHOCO_LOG_VERSION_REGEXP = new RegExp(
@@ -48,7 +48,7 @@ function installPythonWindows(
 
     const logPath = `${
       context.extensionPath
-    }\\logs\\chocolog_${Date.now()}.log`;
+      }\\logs\\chocolog_${Date.now()}.log`;
 
     progress.report({
       message: `Install Python ${PYTHON_VERSION}`,
@@ -351,4 +351,4 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }
