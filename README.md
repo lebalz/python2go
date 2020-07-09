@@ -30,3 +30,25 @@ The packagemanager [homebrew](https://brew.sh/index_de) is used to install [pyen
 - `Python2Go: Uninstall` uninstalls python from your system.
 
 [GitHub](https://github.com/lebalz/python2go)
+
+# Develop
+
+This project contains git submodules. To get started, run
+
+```sh
+git clone git@github.com:lebalz/python2go.git
+git submodule init
+git submodule update
+```
+
+To install the node modules, run
+
+```sh
+yarn install
+```
+
+To fetch changes from the submodules, run
+
+```sh
+git submodule update --remote
+```
