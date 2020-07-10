@@ -98,13 +98,16 @@ function installPythonWithPyEnv(
     `cat -s ${`${context.extensionPath}/bin/install_pyenv_python.sh`} | bash -s "${PYTHON_VERSION}" && echo "Success."`
   )
     .then((result) => {
-      if (!(result.msg ?? result.error ?? '').endsWith("Success.")) {
-        vscode.window.showErrorMessage(
-          `Could not install install python.\n${result.error ?? result.msg}`
-        );
-        return ErrorMsg(result.error ?? result.msg ?? '');
+      if ((result.msg ?? result.error ?? '').endsWith("Success.")) {
+        if (!result.success) {
+          vscode.window.showWarningMessage(`Warnings occured during installation:\n${result.error}`);
+        }
+        return SuccessMsg(osxInstallationLocation());
       }
-      return SuccessMsg(osxInstallationLocation());
+      vscode.window.showErrorMessage(
+        `Could not install install python.\n${result.error ?? result.msg}`
+      );
+      return ErrorMsg(result.error ?? result.msg ?? '');
     });
 }
 
