@@ -1,10 +1,6 @@
 # Python2Go
 
-<a href="https://marketplace.visualstudio.com/items?itemName=lebalz.python2go">
-
 ![Python2Go](logo.png)
-
-</a>
 
 Install the extension from the [Marketplace](https://marketplace.visualstudio.com/items?itemName=lebalz.python2go).
 

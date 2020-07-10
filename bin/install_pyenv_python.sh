@@ -13,7 +13,7 @@ brew install pyenv
 
 if ! pyenv versions | grep $PYTHON_VERSION; then
   # make sure tcl-tk is installed s.t. it can be configured for python
-  echo "installing tkinter©"
+  echo "installing tkinter"
   brew install tcl-tk
 
 
