@@ -3,7 +3,7 @@
 	"displayName": "python2go",
 	"publisher": "lebalz",
 	"description": "install and configure python to start straight away",
-	"version": "0.0.11",
+	"version": "0.0.12",
 	"engines": {
 		"vscode": "^1.46.0"
 	},
@@ -28,7 +28,9 @@
 		"ms-python.python"
 	],
 	"activationEvents": [
-		"onStartupFinished"
+		"onStartupFinished",
+		"onCommand:python2go.checkInstallation",
+		"onCommand:python2go.install"
 	],
 	"main": "./out/extension.js",
 	"contributes": {

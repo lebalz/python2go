@@ -293,7 +293,7 @@ export function activate(context: vscode.ExtensionContext) {
 
   
   let checkInstallationDisposer = vscode.commands.registerCommand(
-    "git2go.checkInstallation",
+    "python2go.checkInstallation",
     () => {
       isPythonInstalled().then((isInstalled) => {
         if (isInstalled) {
