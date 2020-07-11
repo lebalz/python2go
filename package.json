@@ -3,7 +3,7 @@
 	"displayName": "python2go",
 	"publisher": "lebalz",
 	"description": "install and configure python to start straight away",
-	"version": "0.0.10",
+	"version": "0.0.11",
 	"engines": {
 		"vscode": "^1.46.0"
 	},
@@ -28,26 +28,44 @@
 		"ms-python.python"
 	],
 	"activationEvents": [
-		"onCommand:python2go.install",
-		"onCommand:python2go.configure",
-		"onCommand:python2go.uninstall"
+		"onStartupFinished"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
 		"commands": [
 			{
 				"command": "python2go.install",
-				"title": "Python2Go: Install"
+				"category": "Python2Go",
+				"title": "Install"
+			},
+			{
+				"command": "python2go.checkInstallation",
+				"category": "Python2Go",
+				"title": "Python Installed?"
 			},
 			{
 				"command": "python2go.configure",
-				"title": "Python2Go: Configure"
+				"category": "Python2Go",
+				"title": "Configure"
 			},
 			{
 				"command": "python2go.uninstall",
-				"title": "Python2Go: Uninstall"
+				"category": "Python2Go",
+				"title": "Uninstall"
 			}
-		]
+		],
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "python2go.configure",
+					"when": "python2go:isPythonInstalled"
+				},
+				{
+					"command": "python2go.uninstall",
+					"when": "python2go:isPythonInstalled"
+				}
+			]
+		}
 	},
 	"scripts": {
 		"vscode:prepublish": "yarn run compile",

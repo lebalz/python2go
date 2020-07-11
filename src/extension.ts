@@ -12,6 +12,7 @@ import {
 } from "./package-manager/src/chocolatey";
 import { Progress, SuccessMsg, TaskMessage, ErrorMsg } from "./package-manager/src/helpers";
 import { shellExec, vscodeInstallPackageManager } from "./package-manager/src/packageManager";
+import { Logger } from "./logger";
 
 const PYTHON_VERSION = "3.8.3";
 const CHOCO_LOG_VERSION_REGEXP = new RegExp(
@@ -60,25 +61,27 @@ function osxInstallationLocation(): string {
   return `~/.pyenv/versions/${PYTHON_VERSION}/bin/python`;
 }
 
+function setContext(pythonInstalled: boolean) {
+  Logger.log(`Python ${PYTHON_VERSION} installed:`, pythonInstalled);
+  return vscode.commands.executeCommand('setContext', 'python2go:isPythonInstalled', pythonInstalled)
+    .then(() => pythonInstalled);
+}
+
 function isPythonInstalled(): Thenable<boolean> {
   if (process.platform === "darwin") {
     return shellExec(`pyenv versions | grep ${PYTHON_VERSION}`)
       .then((result) => {
-        if (result.success && result.msg.length > 0) {
-          return true;
-        }
-        return false;
+        const isInstalled = result.success && result.msg.length > 0;
+        return setContext(isInstalled);
       });
   } else if (process.platform === "win32") {
     return inShell(`choco list -lo python3 --version ${PYTHON_VERSION}`)
       .then((result) => {
-        if (result.success) {
-          return /1 packages installed\./i.test(result.msg);
-        }
-        return false;
+        const isInstalled = result.success && /1 packages installed\./i.test(result.msg);
+        return setContext(isInstalled);
       });
   }
-  return new Promise((resolve) => resolve(false));
+  return setContext(false);
 }
 
 function installationLocation(): Thenable<TaskMessage> {
@@ -207,10 +210,21 @@ function configure(location?: string, showErrorMsg: boolean = true) {
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-  // Use the console to output diagnostic information (console.log) and errors (console.error)
-  // This line of code will only be executed once when your extension is activated
-  console.log('Congratulations, your extension "python2go" is now active!');
+  Logger.configure('Python2Go');
+  Logger.log('Welcome to Python2Go');
 
+  isPythonInstalled().then((isInstalled) => {
+    if (!isInstalled) {
+      vscode.window.showWarningMessage(
+        `Python ${PYTHON_VERSION} is not installed`, 'Install now'
+      ).then((selection) => {
+        if (selection === 'Install now') {
+          return vscode.commands.executeCommand('python2go.install');
+        }
+      });
+    }
+  });
+ 
   // The command has been defined in the package.json file
   // Now provide the implementation of the command with registerCommand
   // The commandId parameter must match the command field in package.json
@@ -277,9 +291,31 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  
+  let checkInstallationDisposer = vscode.commands.registerCommand(
+    "git2go.checkInstallation",
+    () => {
+      isPythonInstalled().then((isInstalled) => {
+        if (isInstalled) {
+          vscode.window.showInformationMessage(`Python ${PYTHON_VERSION} is installed on your system`);
+        } else {
+          vscode.window.showWarningMessage(
+            `Python ${PYTHON_VERSION} is not installed`, 'Install now'
+          ).then((selection) => {
+            if (selection === 'Install now') {
+              return vscode.commands.executeCommand('python2go.install');
+            }
+          });
+        }
+      });
+    }
+  );
+
+
   context.subscriptions.push(installDisposer);
   context.subscriptions.push(configureDisposer);
   context.subscriptions.push(uninstallDisposer);
+  context.subscriptions.push(checkInstallationDisposer);
 }
 
 // this method is called when your extension is deactivated
