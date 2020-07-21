@@ -3,7 +3,7 @@
 	"displayName": "python2go",
 	"publisher": "lebalz",
 	"description": "install and configure python to start straight away",
-	"version": "0.0.12",
+	"version": "0.0.13",
 	"engines": {
 		"vscode": "^1.46.0"
 	},
@@ -44,6 +44,11 @@
 				"command": "python2go.checkInstallation",
 				"category": "Python2Go",
 				"title": "Python Installed?"
+			},
+			{
+				"command": "python2go.pipInstall",
+				"category": "Python2Go",
+				"title": "Configure"
 			},
 			{
 				"command": "python2go.configure",

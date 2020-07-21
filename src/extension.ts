@@ -1,3 +1,4 @@
+import { GlobalState } from './constants';
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
@@ -212,18 +213,22 @@ function configure(location?: string, showErrorMsg: boolean = true) {
 export function activate(context: vscode.ExtensionContext) {
   Logger.configure('Python2Go');
   Logger.log('Welcome to Python2Go');
+  const skipInstallationCheck = context.globalState.get<string>(GlobalState.SkipPythonInstallationCheckOnInit);
+  Logger.log('Check Installation: ', skipInstallationCheck ? 'no' : 'yes');
 
-  isPythonInstalled().then((isInstalled) => {
-    if (!isInstalled) {
-      vscode.window.showWarningMessage(
-        `Python ${PYTHON_VERSION} is not installed`, 'Install now'
-      ).then((selection) => {
-        if (selection === 'Install now') {
-          return vscode.commands.executeCommand('python2go.install');
-        }
-      });
-    }
-  });
+  if (skipInstallationCheck !== undefined) {
+    isPythonInstalled().then((isInstalled) => {
+      if (!isInstalled) {
+        vscode.window.showWarningMessage(
+          `Python ${PYTHON_VERSION} is not installed`, 'Install now'
+        ).then((selection) => {
+          if (selection === 'Install now') {
+            return vscode.commands.executeCommand('python2go.install');
+          }
+        });
+      }
+    });
+  }
  
   // The command has been defined in the package.json file
   // Now provide the implementation of the command with registerCommand
@@ -312,10 +317,21 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
 
+
+  
+  let isPyInstalled = vscode.commands.registerCommand(
+    "python2go.isPythonInstalled",
+    () => {
+      return isPythonInstalled();
+    }
+  );
+
+
   context.subscriptions.push(installDisposer);
   context.subscriptions.push(configureDisposer);
   context.subscriptions.push(uninstallDisposer);
   context.subscriptions.push(checkInstallationDisposer);
+  context.subscriptions.push(isPyInstalled);
 }
 
 // this method is called when your extension is deactivated
