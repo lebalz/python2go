@@ -1,4 +1,4 @@
-import { GlobalState } from './constants';
+import { Logger } from "./package-manager/src/logger";
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from "vscode";
@@ -11,10 +11,16 @@ import {
   uninstall as chocoUninstall,
   inShell,
 } from "./package-manager/src/chocolatey";
-import { Progress, SuccessMsg, TaskMessage, ErrorMsg } from "./package-manager/src/helpers";
-import { shellExec, vscodeInstallPackageManager } from "./package-manager/src/packageManager";
-import { Logger } from "./logger";
-
+import {
+  Progress,
+  SuccessMsg,
+  TaskMessage,
+  ErrorMsg,
+} from "./package-manager/src/helpers";
+import {
+  shellExec,
+  vscodeInstallPackageManager,
+} from "./package-manager/src/packageManager";
 const PYTHON_VERSION = "3.8.3";
 const CHOCO_LOG_VERSION_REGEXP = new RegExp(
   `Successfully installed 'python3 ${PYTHON_VERSION}'\.\r?\n(.*\r?\n)+?.*Installed to: '(?<location>.*)'`,
@@ -33,14 +39,15 @@ function installPythonWindows(
 
   return inElevatedShell(
     `choco install -y python3 --side-by-side --version=${PYTHON_VERSION} | Tee-Object -FilePath ${logPath} | Write-Output`
-  )
-    .then((result) => {
-      if (result.error) {
-        vscode.window.showErrorMessage(`Trouble installing python:\n${result.error}`);
-        return result;
-      }
-      return winInstallationLocation();
-    });
+  ).then((result) => {
+    if (result.error) {
+      vscode.window.showErrorMessage(
+        `Trouble installing python:\n${result.error}`
+      );
+      return result;
+    }
+    return winInstallationLocation();
+  });
 }
 
 function winInstallationLocation(): Thenable<TaskMessage> {
@@ -64,55 +71,65 @@ function osxInstallationLocation(): string {
 
 function setContext(pythonInstalled: boolean) {
   Logger.log(`Python ${PYTHON_VERSION} installed:`, pythonInstalled);
-  return vscode.commands.executeCommand('setContext', 'python2go:isPythonInstalled', pythonInstalled)
+  return vscode.commands
+    .executeCommand(
+      "setContext",
+      "python2go:isPythonInstalled",
+      pythonInstalled
+    )
     .then(() => pythonInstalled);
 }
 
 function isPythonInstalled(): Thenable<boolean> {
   if (process.platform === "darwin") {
-    return shellExec(`pyenv versions | grep ${PYTHON_VERSION}`)
-      .then((result) => {
+    return shellExec(`pyenv versions | grep ${PYTHON_VERSION}`).then(
+      (result) => {
         const isInstalled = result.success && result.msg.length > 0;
         return setContext(isInstalled);
-      });
+      }
+    );
   } else if (process.platform === "win32") {
-    return inShell(`choco list -lo python3 --version ${PYTHON_VERSION}`)
-      .then((result) => {
-        const isInstalled = result.success && /1 packages installed\./i.test(result.msg);
+    return inShell(`choco list -lo python3 --version ${PYTHON_VERSION}`).then(
+      (result) => {
+        const isInstalled =
+          result.success && /1 packages installed\./i.test(result.msg);
         return setContext(isInstalled);
-      });
+      }
+    );
   }
   return setContext(false);
 }
 
 function installationLocation(): Thenable<TaskMessage> {
   if (process.platform === "darwin") {
-    return new Promise((resolve) => resolve(SuccessMsg(osxInstallationLocation())));
+    return new Promise((resolve) =>
+      resolve(SuccessMsg(osxInstallationLocation()))
+    );
   } else if (process.platform === "win32") {
     return winInstallationLocation();
   }
-  return new Promise((resolve) => resolve(ErrorMsg('Plattform not supported')));
+  return new Promise((resolve) => resolve(ErrorMsg("Plattform not supported")));
 }
 
 function installPythonWithPyEnv(
   context: vscode.ExtensionContext
 ): Thenable<TaskMessage> {
-
   return shellExec(
     `cat -s ${`${context.extensionPath}/bin/install_pyenv_python.sh`} | bash -s "${PYTHON_VERSION}" && echo "Success."`
-  )
-    .then((result) => {
-      if ((result.msg ?? result.error ?? '').endsWith("Success.")) {
-        if (!result.success) {
-          vscode.window.showWarningMessage(`Warnings occured during installation:\n${result.error}`);
-        }
-        return SuccessMsg(osxInstallationLocation());
+  ).then((result) => {
+    if ((result.msg ?? result.error ?? "").endsWith("Success.")) {
+      if (!result.success) {
+        vscode.window.showWarningMessage(
+          `Warnings occured during installation:\n${result.error}`
+        );
       }
-      vscode.window.showErrorMessage(
-        `Could not install install python.\n${result.error ?? result.msg}`
-      );
-      return ErrorMsg(result.error ?? result.msg ?? '');
-    });
+      return SuccessMsg(osxInstallationLocation());
+    }
+    vscode.window.showErrorMessage(
+      `Could not install install python.\n${result.error ?? result.msg}`
+    );
+    return ErrorMsg(result.error ?? result.msg ?? "");
+  });
 }
 
 /**
@@ -124,19 +141,19 @@ function installPython(
   context: vscode.ExtensionContext,
   progress: Progress
 ): Thenable<TaskMessage> {
-  return isPythonInstalled()
-    .then((isInstalled) => {
-      if (isInstalled) {
-        return installationLocation();
-      }
-      return vscodeInstallPackageManager(context, progress, 30).then((success) => {
+  return isPythonInstalled().then((isInstalled) => {
+    if (isInstalled) {
+      return installationLocation();
+    }
+    return vscodeInstallPackageManager(context, progress, 30).then(
+      (success) => {
         if (!success) {
-          return ErrorMsg('Could not install Package Manager');
+          return ErrorMsg("Could not install Package Manager");
         }
         return vscode.window.withProgress(
           {
             location: vscode.ProgressLocation.Notification,
-            title: `Python2go]: Installing Python ${PYTHON_VERSION}`
+            title: `Python2go]: Installing Python ${PYTHON_VERSION}`,
           },
           () => {
             progress.report({ message: "Install Python", increment: 35 });
@@ -145,14 +162,19 @@ function installPython(
             } else if (process.platform === "win32") {
               return installPythonWindows(context);
             }
-            return new Promise((resolve) => resolve(ErrorMsg(`Plattform '${process.platform}' not supported`)));
+            return new Promise((resolve) =>
+              resolve(ErrorMsg(`Plattform '${process.platform}' not supported`))
+            );
           }
         );
-      });
-    });
+      }
+    );
+  });
 }
 
-function uninstallPython(context: vscode.ExtensionContext): Thenable<TaskMessage> {
+function uninstallPython(
+  context: vscode.ExtensionContext
+): Thenable<TaskMessage> {
   return vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
@@ -211,25 +233,24 @@ function configure(location?: string, showErrorMsg: boolean = true) {
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-  Logger.configure('Python2Go');
-  Logger.log('Welcome to Python2Go');
-  const skipInstallationCheck = context.globalState.get<string>(GlobalState.SkipPythonInstallationCheckOnInit);
-  Logger.log('Check Installation: ', skipInstallationCheck ? 'no' : 'yes');
+  Logger.configure("python2go", "Python2Go");
+  Logger.log("Welcome to Python2Go");
 
-  if (skipInstallationCheck !== undefined) {
-    isPythonInstalled().then((isInstalled) => {
-      if (!isInstalled) {
-        vscode.window.showWarningMessage(
-          `Python ${PYTHON_VERSION} is not installed`, 'Install now'
-        ).then((selection) => {
-          if (selection === 'Install now') {
-            return vscode.commands.executeCommand('python2go.install');
+  isPythonInstalled().then((isInstalled) => {
+    if (!isInstalled) {
+      vscode.window
+        .showWarningMessage(
+          `Python ${PYTHON_VERSION} is not installed`,
+          "Install now"
+        )
+        .then((selection) => {
+          if (selection === "Install now") {
+            return vscode.commands.executeCommand("python2go.install");
           }
         });
-      }
-    });
-  }
- 
+    }
+  });
+
   // The command has been defined in the package.json file
   // Now provide the implementation of the command with registerCommand
   // The commandId parameter must match the command field in package.json
@@ -266,15 +287,14 @@ export function activate(context: vscode.ExtensionContext) {
   let configureDisposer = vscode.commands.registerCommand(
     "python2go.configure",
     () => {
-      installationLocation()
-        .then((result) => {
-          if (result.success && result.msg.length > 0) {
-            return configure(result.msg);
-          }
-          vscode.window.showInformationMessage(
-            `Could not update configuration: ${result.error}`
-          );
-        });
+      installationLocation().then((result) => {
+        if (result.success && result.msg.length > 0) {
+          return configure(result.msg);
+        }
+        vscode.window.showInformationMessage(
+          `Could not update configuration: ${result.error}`
+        );
+      });
     }
   );
 
@@ -296,36 +316,36 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  
   let checkInstallationDisposer = vscode.commands.registerCommand(
     "python2go.checkInstallation",
     () => {
       isPythonInstalled().then((isInstalled) => {
         if (isInstalled) {
-          vscode.window.showInformationMessage(`Python ${PYTHON_VERSION} is installed on your system`);
+          vscode.window.showInformationMessage(
+            `Python ${PYTHON_VERSION} is installed on your system`
+          );
         } else {
-          vscode.window.showWarningMessage(
-            `Python ${PYTHON_VERSION} is not installed`, 'Install now'
-          ).then((selection) => {
-            if (selection === 'Install now') {
-              return vscode.commands.executeCommand('python2go.install');
-            }
-          });
+          vscode.window
+            .showWarningMessage(
+              `Python ${PYTHON_VERSION} is not installed`,
+              "Install now"
+            )
+            .then((selection) => {
+              if (selection === "Install now") {
+                return vscode.commands.executeCommand("python2go.install");
+              }
+            });
         }
       });
     }
   );
 
-
-
-  
   let isPyInstalled = vscode.commands.registerCommand(
     "python2go.isPythonInstalled",
     () => {
       return isPythonInstalled();
     }
   );
-
 
   context.subscriptions.push(installDisposer);
   context.subscriptions.push(configureDisposer);
@@ -335,4 +355,4 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() { }
+export function deactivate() {}
