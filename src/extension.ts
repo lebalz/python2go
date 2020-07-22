@@ -20,6 +20,7 @@ import {
 import {
   shellExec,
   vscodeInstallPackageManager,
+  inOsShell,
 } from "./package-manager/src/packageManager";
 const PYTHON_VERSION = "3.8.3";
 const CHOCO_LOG_VERSION_REGEXP = new RegExp(
@@ -230,6 +231,40 @@ function configure(location?: string, showErrorMsg: boolean = true) {
   });
 }
 
+function pip(cmd: string) {
+  const pipCmd = process.platform === "win32" ? "pip" : "pip3";
+  return inOsShell(`${pipCmd} ${cmd}`, { requiredCmd: pipCmd });
+}
+
+function sudoPip(cmd: string) {
+  const pipCmd = process.platform === "win32" ? "pip" : "sudo -H pip3";
+  return inOsShell(`${pipCmd} ${cmd}`, {
+    requiredCmd: pipCmd,
+    sudo: true,
+    promptMsg: `to execute "sudo pip3 ${cmd}"`,
+  });
+}
+
+function installedPipPackages(): Thenable<
+  { package: string; version: string }[]
+> {
+  return pip("list").then((result) => {
+    if (result.success) {
+      const pkgs = result.msg.split(/\r?\n/).slice(2);
+      return pkgs.map((pkg) => {
+        // \S --> any non whitespace character
+        // \s --> any whitespace character
+        const match = pkg.match(/(?<pkg>\S+)\s+(?<version>\S+)/);
+        return {
+          package: match?.groups?.pkg ?? "",
+          version: match?.groups?.version ?? "",
+        };
+      });
+    }
+    return [];
+  });
+}
+
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -257,7 +292,8 @@ export function activate(context: vscode.ExtensionContext) {
   let installDisposer = vscode.commands.registerCommand(
     "python2go.install",
     () => {
-      vscode.window.withProgress(
+      Logger.show();
+      return vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
           title: "[Python2go]: Install",
@@ -287,7 +323,7 @@ export function activate(context: vscode.ExtensionContext) {
   let configureDisposer = vscode.commands.registerCommand(
     "python2go.configure",
     () => {
-      installationLocation().then((result) => {
+      return installationLocation().then((result) => {
         if (result.success && result.msg.length > 0) {
           return configure(result.msg);
         }
@@ -301,6 +337,7 @@ export function activate(context: vscode.ExtensionContext) {
   let uninstallDisposer = vscode.commands.registerCommand(
     "python2go.uninstall",
     () => {
+      Logger.show();
       try {
         uninstallPython(context).then((msg) => {
           configure(undefined, false);
@@ -319,7 +356,7 @@ export function activate(context: vscode.ExtensionContext) {
   let checkInstallationDisposer = vscode.commands.registerCommand(
     "python2go.checkInstallation",
     () => {
-      isPythonInstalled().then((isInstalled) => {
+      return isPythonInstalled().then((isInstalled) => {
         if (isInstalled) {
           vscode.window.showInformationMessage(
             `Python ${PYTHON_VERSION} is installed on your system`
@@ -347,11 +384,68 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  let pipInstaller = vscode.commands.registerCommand(
+    "python2go.pip",
+    (command) => {
+      Logger.show();
+      return vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `[Python2go]: pip ${command}`,
+        },
+        (progress) => {
+          return pip(command).then((result) => {
+            if (result.success) {
+              progress.report({ message: "Success", increment: 100 });
+            } else {
+              vscode.window.showErrorMessage(`pip ${command}: ${result.error}`);
+            }
+          });
+        }
+      );
+    }
+  );
+
+  let sudoPipInstaller = vscode.commands.registerCommand(
+    "python2go.sudoPip",
+    (command) => {
+      Logger.show();
+      return vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `[Python2go]: pip ${command}`,
+        },
+        (progress) => {
+          return sudoPip(command).then((result) => {
+            if (result.success) {
+              progress.report({ message: "Success", increment: 100 });
+              vscode.window.showInformationMessage(
+                `[Python2go]: Successfully executed "pip ${command}"`
+              );
+            } else {
+              vscode.window.showErrorMessage(`pip ${command}: ${result.error}`);
+            }
+          });
+        }
+      );
+    }
+  );
+
+  let pipPackages = vscode.commands.registerCommand(
+    "python2go.pipPackages",
+    () => {
+      return installedPipPackages();
+    }
+  );
+
   context.subscriptions.push(installDisposer);
   context.subscriptions.push(configureDisposer);
   context.subscriptions.push(uninstallDisposer);
   context.subscriptions.push(checkInstallationDisposer);
   context.subscriptions.push(isPyInstalled);
+  context.subscriptions.push(pipInstaller);
+  context.subscriptions.push(sudoPipInstaller);
+  context.subscriptions.push(pipPackages);
 }
 
 // this method is called when your extension is deactivated
