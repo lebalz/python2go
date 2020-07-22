@@ -67,7 +67,8 @@ function winInstallationLocation(): Thenable<TaskMessage> {
 }
 
 function osxInstallationLocation(): string {
-  return `~/.pyenv/versions/${PYTHON_VERSION}/bin/python`;
+  const homeFolder = execSync("echo $HOME").toString().trim();
+  return `${homeFolder}/.pyenv/versions/${PYTHON_VERSION}/bin/python`;
 }
 
 function setContext(pythonInstalled: boolean) {
@@ -397,6 +398,9 @@ export function activate(context: vscode.ExtensionContext) {
           return pip(command).then((result) => {
             if (result.success) {
               progress.report({ message: "Success", increment: 100 });
+              vscode.window.showInformationMessage(
+                `[Python2go]: Successfully executed "pip ${command}"`
+              );
             } else {
               vscode.window.showErrorMessage(`pip ${command}: ${result.error}`);
             }
@@ -438,6 +442,13 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  let installationLocationProvider = vscode.commands.registerCommand(
+    "python2go.installationLocation",
+    () => {
+      return installationLocation();
+    }
+  );
+
   context.subscriptions.push(installDisposer);
   context.subscriptions.push(configureDisposer);
   context.subscriptions.push(uninstallDisposer);
@@ -446,6 +457,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(pipInstaller);
   context.subscriptions.push(sudoPipInstaller);
   context.subscriptions.push(pipPackages);
+  context.subscriptions.push(installationLocationProvider);
 }
 
 // this method is called when your extension is deactivated

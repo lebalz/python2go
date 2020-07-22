@@ -43,6 +43,7 @@ These commands will not show up in the command palette:
   // --> win in elevated powershell: `pip install pylint`
   ```
 - `python2go.pipPackages: Thenable<{ package: string, version: string}[]>`
+- `python2go.installationLocation: Thenable<TaskMessage>` returns the installation location of python
 
 [GitHub](https://github.com/lebalz/python2go)
 
