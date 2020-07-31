@@ -234,12 +234,12 @@ function configure(location?: string, showErrorMsg: boolean = true) {
 
 function pip(cmd: string) {
   const pipCmd = process.platform === "win32" ? "pip" : "pip3";
-  return inOsShell(`${pipCmd} ${cmd}`, { requiredCmd: pipCmd });
+  return inOsShell(`${pipCmd} --disable-pip-version-check ${cmd}`, { requiredCmd: pipCmd });
 }
 
 function sudoPip(cmd: string) {
   const pipCmd = process.platform === "win32" ? "pip" : "sudo -H pip3";
-  return inOsShell(`${pipCmd} ${cmd}`, {
+  return inOsShell(`${pipCmd} --disable-pip-version-check ${cmd}`, {
     requiredCmd: pipCmd,
     sudo: true,
     promptMsg: `to execute "sudo pip3 ${cmd}"`,
@@ -252,7 +252,9 @@ function installedPipPackages(): Thenable<
   return pip("list").then((result) => {
     if (result.success) {
       const pkgs = result.msg.split(/\r?\n/).slice(2);
+      Logger.log('Installed pip packages:');
       return pkgs.map((pkg) => {
+        Logger.log(pkg);
         // \S --> any non whitespace character
         // \s --> any whitespace character
         const match = pkg.match(/(?<pkg>\S+)\s+(?<version>\S+)/);

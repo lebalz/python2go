@@ -3,7 +3,7 @@
 	"displayName": "python2go",
 	"publisher": "lebalz",
 	"description": "install and configure python to start straight away",
-	"version": "0.0.15",
+	"version": "0.0.16",
 	"engines": {
 		"vscode": "^1.46.0"
 	},
