@@ -55,7 +55,7 @@ function installPythonWindows(
 
 function pythonVersion(): string {
   const conf = vscode.workspace.getConfiguration();
-  return conf.get(Py2GoSettings.PythonVersion, "3.8.5");
+  return conf.get(Py2GoSettings.PythonVersion, "3.8.3");
 }
 
 function winInstallationLocation(): Thenable<TaskMessage> {
@@ -333,21 +333,29 @@ export function activate(context: vscode.ExtensionContext) {
           cancellable: true,
         },
         (progress, _token) => {
-          progress.report({ message: "Start...", increment: 5 });
-          return installPython(context, progress)
-            .then((result) => {
-              if (!result.success || result.msg.length === 0) {
-                throw new Error("Installation failed.");
-              }
-              progress.report({ message: "Configure...", increment: 90 });
-              return configure(result.msg);
-            })
-            .then(() => {
-              progress.report({ message: "Success", increment: 100 });
-              vscode.window.showInformationMessage(
-                "Python installed and configured. Ready to go"
-              );
-            });
+          return isPythonInstalled().then((wasInstalled) => {
+            progress.report({ message: "Start...", increment: 5 });
+            return installPython(context, progress)
+              .then((result) => {
+                if (!result.success || result.msg.length === 0) {
+                  throw new Error("Installation failed.");
+                }
+                progress.report({ message: "Configure...", increment: 90 });
+                return configure(result.msg);
+              })
+              .then(() => {
+                progress.report({ message: "Success", increment: 100 });
+                if (wasInstalled) {
+                  vscode.window.showInformationMessage(
+                    "Python installed and configured."
+                  );
+                } else {
+                  vscode.window.showInformationMessage(
+                    "!! Restart VS Code now to finish the Python installation !!"
+                  );
+                }
+              });
+          });
         }
       );
     }

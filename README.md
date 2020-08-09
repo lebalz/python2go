@@ -6,6 +6,11 @@ Install the extension from the [Marketplace](https://marketplace.visualstudio.co
 
 Python2go installs a recent Version of Python (inlcuding tkinter) to your windows or osx computer. Linux/WSL is currently not supported. VS Code is configured such that the newly installed versions are used.
 
+VS Code checks at startup, wheter a python version is installed
+
+![prompt to install](python_install_prompt.png)
+
+
 ## Windows
 
 A recent version (3.8.3) is downloaded and installed. Tkinter and test suite are included and the exe will be added to your PATH.
@@ -23,7 +28,12 @@ The packagemanager [homebrew](https://brew.sh/index_de) is used to install [pyen
 - `Python2Go: Install` installs python and configures vs code global settings to use the newly installed python. **Restart vs code** after installation.
 - `Python2Go: Configure` (Re)configures vs code to use the installed version of python.
 - `Python2Go: Uninstall` uninstalls python from your system.
-- `Python2Go: Python Installed?` checks if python is installed on your system.
+- `Python2Go: Check Installation` checks if python is installed on your system.
+- `Python2Go: Install pip package` installs a pip package (with the `--user` flag)
+- `Python2Go: Uninstall pip package` uninstalls a pip package
+- `Python2Go: Upgrade pip package (latest version)` upgrades a pip package
+- `Python2Go: Upgrade pip` upgrades a the pip package
+- `Python2Go: Set Python version` sets a different python version
 
 ## commands for other plugins
 

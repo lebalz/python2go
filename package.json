@@ -3,7 +3,7 @@
 	"displayName": "python2go",
 	"publisher": "lebalz",
 	"description": "install and configure python to start straight away",
-	"version": "0.0.18",
+	"version": "0.0.19",
 	"engines": {
 		"vscode": "^1.46.0"
 	},
@@ -43,7 +43,7 @@
 			{
 				"command": "python2go.checkInstallation",
 				"category": "Python2Go",
-				"title": "Python Installed?"
+				"title": "Check Installation"
 			},
 			{
 				"command": "python2go.pipInstall",
@@ -58,7 +58,7 @@
 			{
 				"command": "python2go.pipUpgradePackage",
 				"category": "Python2Go",
-				"title": "Upgrade a pip package to the latest version"
+				"title": "Upgrade pip package (latest version)"
 			},
 			{
 				"command": "python2go.configure",
@@ -73,7 +73,7 @@
 			{
 				"command": "python2go.pipUpgradeSelf",
 				"category": "Python2Go",
-				"title": "Upgrade pip to the latest version"
+				"title": "Upgrade pip"
 			},
 			{
 				"command": "python2go.setPythonVersion",
@@ -107,7 +107,7 @@
 					"type": [
 						"string"
 					],
-					"default": "3.8.5",
+					"default": "3.8.3",
 					"description": "The python version which will be installed"
 				}
 			}
