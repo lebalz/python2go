@@ -29,7 +29,7 @@ The packagemanager [homebrew](https://brew.sh/index_de) is used to install [pyen
 - `Python2Go: Configure` (Re)configures vs code to use the installed version of python.
 - `Python2Go: Uninstall` uninstalls python from your system.
 - `Python2Go: Check Installation` checks if python is installed on your system.
-- `Python2Go: Install pip package` installs a pip package (with the `--user` flag)
+- `Python2Go: Install pip package` installs a pip package (with the `--user on windows)
 - `Python2Go: Uninstall pip package` uninstalls a pip package
 - `Python2Go: Upgrade pip package (latest version)` upgrades a pip package
 - `Python2Go: Upgrade pip` upgrades a the pip package

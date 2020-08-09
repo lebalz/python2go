@@ -563,7 +563,8 @@ export function activate(context: vscode.ExtensionContext) {
   let pipUpgradeSelfDisposer = vscode.commands.registerCommand(
     "python2go.pipUpgradeSelf",
     () => {
-      return pip("install --user --upgrade pip").then((result) => {
+      const target = process.platform === 'win32' ? '--user' : '';
+      return pip(`install ${target} --upgrade pip`).then((result) => {
         if (result.success) {
           vscode.window.showInformationMessage(
             `Upgraded pip to the latest version`
@@ -586,7 +587,8 @@ export function activate(context: vscode.ExtensionContext) {
         })
         .then((pipPkg) => {
           if (pipPkg) {
-            return pip(`install --user ${pipPkg}`).then((result) => {
+            const target = process.platform === 'win32' ? '--user' : '';
+            return pip(`install ${target} ${pipPkg}`).then((result) => {
               if (result.success) {
                 installedPipPackages().then((pkgs) => {
                   const updatedPkg = pkgs.find((pkg) => pkg.package === pipPkg);
@@ -614,7 +616,9 @@ export function activate(context: vscode.ExtensionContext) {
           )
           .then((selected) => {
             if (selected) {
-              pip(`install --user --upgrade ${selected.label}`).then(
+              const target = process.platform === 'win32' ? '--user' : '';
+
+              pip(`install ${target} --upgrade ${selected.label}`).then(
                 (result) => {
                   if (result.success) {
                     installedPipPackages().then((pkgs) => {
