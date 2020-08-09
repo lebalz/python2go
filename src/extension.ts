@@ -563,7 +563,7 @@ export function activate(context: vscode.ExtensionContext) {
   let pipUpgradeSelfDisposer = vscode.commands.registerCommand(
     "python2go.pipUpgradeSelf",
     () => {
-      return pip("install --upgrade pip").then((result) => {
+      return pip("install --user --upgrade pip").then((result) => {
         if (result.success) {
           vscode.window.showInformationMessage(
             `Upgraded pip to the latest version`
@@ -614,7 +614,7 @@ export function activate(context: vscode.ExtensionContext) {
           )
           .then((selected) => {
             if (selected) {
-              pip(`install --user ${selected.label} --upgrade`).then(
+              pip(`install --user --upgrade ${selected.label}`).then(
                 (result) => {
                   if (result.success) {
                     installedPipPackages().then((pkgs) => {
