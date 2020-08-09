@@ -23,6 +23,7 @@ import {
   inOsShell,
 } from "./package-manager/src/packageManager";
 import { setTimeout } from "timers";
+import { env } from "process";
 
 export enum Py2GoSettings {
   SkipInstallationCheck = "python2go.skip_installation_check",
@@ -30,6 +31,41 @@ export enum Py2GoSettings {
 }
 
 const CHOCO_LOG_LOCATION_REGEXP = /Installed to: '(?<location>.*)'/i;
+
+function addUserSiteToEnvWindows() {
+  return inOsShell("python -m site --user-base", {
+    requiredCmd: "python",
+  }).then((result) => {
+    if (result.error) {
+      vscode.window.showErrorMessage(
+        `Trouble getting --user install path:\n${result.error}`
+      );
+      return result;
+    }
+    const pyVersion = pythonVersion().split(".").slice(0, 2).join("");
+    const pythonPath = `${(
+      result.msg ?? ""
+    ).trim()}\\Python${pyVersion}\\Scripts`;
+    return inOsShell(
+      "(Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\Session Manager\\Environment' -Name PATH).path",
+      { requiredCmd: "python" }
+    ).then((result) => {
+      if (result.error || !result.msg) {
+        vscode.window.showErrorMessage(
+          `Trouble getting environment path:\n${result.error}`
+        );
+        return result;
+      }
+      const usrPath = result.msg;
+      if (!usrPath.includes(pythonPath)) {
+        return inElevatedShell(
+          `Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\Session Manager\\Environment' -Name PATH -Value ${pythonPath};${usrPath}`
+        );
+      }
+      return new Promise<TaskMessage>((resolve) => resolve(SuccessMsg("")));
+    });
+  });
+}
 
 function installPythonWindows(
   context: vscode.ExtensionContext
@@ -49,7 +85,16 @@ function installPythonWindows(
       );
       return result;
     }
-    return winInstallationLocation();
+
+    return addUserSiteToEnvWindows().then((result) => {
+      if (result.error || !result.msg) {
+        vscode.window.showErrorMessage(
+          `Trouble setting environment path:\n${result.error}`
+        );
+        return result;
+      }
+      return winInstallationLocation();
+    });
   });
 }
 
@@ -633,6 +678,24 @@ export function activate(context: vscode.ExtensionContext) {
         });
     }
   );
+  let addPipUserPathToEnvDisposer = vscode.commands.registerCommand(
+    "python2go.addPipUserPathToEnv",
+    () => {
+      if (process.platform !== 'win32') {
+        vscode.window.showInformationMessage('Only available on windows');
+        return;
+      }
+      addUserSiteToEnvWindows().then((result) => {
+        if (result.error) {
+          vscode.window.showErrorMessage(
+            `Error adding user site to path: ${result.msg}: ${result.error}`
+          );
+        } else {
+          vscode.window.showInformationMessage('Successfully added to path. Restart vs code to take effect.')
+        }
+      });
+    }
+  );
 
   context.subscriptions.push(installDisposer);
   context.subscriptions.push(configureDisposer);
@@ -648,6 +711,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(pipUpgradePackageDisposer);
   context.subscriptions.push(pipUninstallDisposer);
   context.subscriptions.push(setPythonVersionDisposer);
+  context.subscriptions.push(addPipUserPathToEnvDisposer);
 }
 
 // this method is called when your extension is deactivated

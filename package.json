@@ -79,6 +79,11 @@
 				"command": "python2go.setPythonVersion",
 				"category": "Python2Go",
 				"title": "Set Python version"
+			},
+			{
+				"command": "python2go.addPipUserPathToEnv",
+				"category": "Python2Go",
+				"title": "Add the local --user path to the env (win only)"
 			}
 		],
 		"menus": {
