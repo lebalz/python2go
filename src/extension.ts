@@ -32,7 +32,10 @@ export enum Py2GoSettings {
 
 const CHOCO_LOG_LOCATION_REGEXP = /Installed to: '(?<location>.*)'/i;
 
-function addUserSiteToEnvWindows() {
+function addUserPathToUsersEnv(): Thenable<TaskMessage> {
+  if (process.platform !== 'win32') {
+    return new Promise<TaskMessage>((resolve) => resolve(SuccessMsg('OK')));
+  }
   return inOsShell("python -m site --user-base", {
     requiredCmd: "python",
   }).then((result) => {
@@ -43,12 +46,12 @@ function addUserSiteToEnvWindows() {
       return result;
     }
     const pyVersion = pythonVersion().split(".").slice(0, 2).join("");
-    const pythonPath = `${(
-      result.msg ?? ""
-    ).trim()}\\Python${pyVersion}\\Scripts`;
+    const userSitePath = (result.msg ?? '').trim();
+    const pythonPath = `${userSitePath}\\Python${pyVersion}`;
+    const pythonVersionPath = `${pythonPath}\\Scripts`;
+
     return inOsShell(
-      "(Get-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\Session Manager\\Environment' -Name PATH).path",
-      { requiredCmd: "python" }
+      "[System.Environment]::GetEnvironmentVariable('Path','User')"
     ).then((result) => {
       if (result.error || !result.msg) {
         vscode.window.showErrorMessage(
@@ -57,10 +60,24 @@ function addUserSiteToEnvWindows() {
         return result;
       }
       const usrPath = result.msg;
+      // remove older installations!!
+      const pathes = usrPath.split(';').filter(p => !p.trim().startsWith(userSitePath));
+
       if (!usrPath.includes(pythonPath)) {
-        return inElevatedShell(
-          `Set-ItemProperty -Path 'Registry::HKEY_LOCAL_MACHINE\\System\\CurrentControlSet\\Control\\Session Manager\\Environment' -Name PATH -Value ${pythonPath};${usrPath}`
-        );
+        return inOsShell(
+          `setx Path '${pathes.join(';')};${pythonVersionPath}'`
+        ).then((result) => {
+          if (result.error || !result.msg) {
+            vscode.window.showErrorMessage(
+              `Trouble setting users environment path: ${result.error}`
+            );
+            return result;
+          }
+          vscode.window.showInformationMessage(
+            `Successfully added '${pythonVersionPath}' to the users path`
+          );
+          return result;
+        });
       }
       return new Promise<TaskMessage>((resolve) => resolve(SuccessMsg("")));
     });
@@ -86,7 +103,7 @@ function installPythonWindows(
       return result;
     }
 
-    return addUserSiteToEnvWindows().then((result) => {
+    return addUserPathToUsersEnv().then((result) => {
       if (result.error || !result.msg) {
         vscode.window.showErrorMessage(
           `Trouble setting environment path:\n${result.error}`
@@ -685,7 +702,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage('Only available on windows');
         return;
       }
-      addUserSiteToEnvWindows().then((result) => {
+      addUserPathToUsersEnv().then((result) => {
         if (result.error) {
           vscode.window.showErrorMessage(
             `Error adding user site to path: ${result.msg}: ${result.error}`
@@ -715,4 +732,4 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }
