@@ -3,7 +3,7 @@
 	"displayName": "python2go",
 	"publisher": "lebalz",
 	"description": "install and configure python to start straight away",
-	"version": "0.0.17",
+	"version": "0.0.18",
 	"engines": {
 		"vscode": "^1.46.0"
 	},
@@ -74,6 +74,11 @@
 				"command": "python2go.pipUpgradeSelf",
 				"category": "Python2Go",
 				"title": "Upgrade pip to the latest version"
+			},
+			{
+				"command": "python2go.setPythonVersion",
+				"category": "Python2Go",
+				"title": "Set Python version"
 			}
 		],
 		"menus": {

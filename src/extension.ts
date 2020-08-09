@@ -22,8 +22,7 @@ import {
   vscodeInstallPackageManager,
   inOsShell,
 } from "./package-manager/src/packageManager";
-import { resolve } from "path";
-const DEFAULT_PYTHON_VERSION = "3.8.5";
+import { setTimeout } from "timers";
 
 export enum Py2GoSettings {
   SkipInstallationCheck = "python2go.skip_installation_check",
@@ -56,7 +55,7 @@ function installPythonWindows(
 
 function pythonVersion(): string {
   const conf = vscode.workspace.getConfiguration();
-  return conf.get(Py2GoSettings.PythonVersion, DEFAULT_PYTHON_VERSION);
+  return conf.get(Py2GoSettings.PythonVersion, "3.8.5");
 }
 
 function winInstallationLocation(): Thenable<TaskMessage> {
@@ -240,7 +239,8 @@ function configure(location?: string, showErrorMsg: boolean = true) {
           isInstalled ? location : undefined,
           vscode.ConfigurationTarget.Global
         );
-      }).then(() => {
+      })
+      .then(() => {
         configuration.update(
           Py2GoSettings.PythonVersion,
           pythonVersion(),
@@ -308,7 +308,11 @@ export function activate(context: vscode.ExtensionContext) {
               return vscode.commands.executeCommand("python2go.install");
             } else if (selection === "Disable Check") {
               const conf = vscode.workspace.getConfiguration();
-              conf.update(Py2GoSettings.SkipInstallationCheck, true);
+              conf.update(
+                Py2GoSettings.SkipInstallationCheck,
+                true,
+                vscode.ConfigurationTarget.Global
+              );
             }
           });
       }
@@ -482,9 +486,9 @@ export function activate(context: vscode.ExtensionContext) {
     () => {
       return pip("install --upgrade pip").then((result) => {
         if (result.success) {
-            vscode.window.showInformationMessage(
-              `Upgraded pip to the latest version`
-            );
+          vscode.window.showInformationMessage(
+            `Upgraded pip to the latest version`
+          );
         } else {
           vscode.window.showErrorMessage(
             `Error upgrading pip: ${result.error}`
@@ -506,9 +510,7 @@ export function activate(context: vscode.ExtensionContext) {
             return pip(`install --user ${pipPkg}`).then((result) => {
               if (result.success) {
                 installedPipPackages().then((pkgs) => {
-                  const updatedPkg = pkgs.find(
-                    (pkg) => pkg.package === pipPkg
-                  );
+                  const updatedPkg = pkgs.find((pkg) => pkg.package === pipPkg);
                   vscode.window.showInformationMessage(
                     `Installed pip package ${pipPkg} V${updatedPkg?.version}`
                   );
@@ -570,22 +572,48 @@ export function activate(context: vscode.ExtensionContext) {
           )
           .then((selected) => {
             if (selected) {
-              pip(`uninstall -y ${selected.label}`).then(
-                (result) => {
-                  if (result.success) {
-                      vscode.window.showInformationMessage(
-                        `Uninstalled pip package ${selected.label}`
-                      );
-                  } else {
-                    vscode.window.showErrorMessage(
-                      `Error uninstalling ${selected.label}: ${result.error}`
-                    );
-                  }
+              pip(`uninstall -y ${selected.label}`).then((result) => {
+                if (result.success) {
+                  vscode.window.showInformationMessage(
+                    `Uninstalled pip package ${selected.label}`
+                  );
+                } else {
+                  vscode.window.showErrorMessage(
+                    `Error uninstalling ${selected.label}: ${result.error}`
+                  );
                 }
-              );
+              });
             }
           });
       });
+    }
+  );
+  let setPythonVersionDisposer = vscode.commands.registerCommand(
+    "python2go.setPythonVersion",
+    () => {
+      vscode.window
+        .showInputBox({
+          prompt: "Python Version",
+          value: pythonVersion(),
+        })
+        .then((pyVersion) => {
+          if (pyVersion) {
+            const conf = vscode.workspace.getConfiguration();
+            conf
+              .update(
+                Py2GoSettings.PythonVersion,
+                pyVersion,
+                vscode.ConfigurationTarget.Global
+              )
+              .then(() => {
+                // make sure the version change is propageted - push the command execution to the end of
+                // the command queue
+                setTimeout(() => {
+                  vscode.commands.executeCommand("python2go.checkInstallation");
+                }, 0);
+              });
+          }
+        });
     }
   );
 
@@ -602,6 +630,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(pipInstallDisposer);
   context.subscriptions.push(pipUpgradePackageDisposer);
   context.subscriptions.push(pipUninstallDisposer);
+  context.subscriptions.push(setPythonVersionDisposer);
 }
 
 // this method is called when your extension is deactivated
