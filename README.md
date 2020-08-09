@@ -68,3 +68,10 @@ To fetch changes from the submodules, run
 ```sh
 git submodule update --remote
 ```
+
+### pack and publish
+
+```sh
+vsce package
+vsce publish
+```

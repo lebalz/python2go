@@ -3,7 +3,7 @@
 	"displayName": "python2go",
 	"publisher": "lebalz",
 	"description": "install and configure python to start straight away",
-	"version": "0.0.16",
+	"version": "0.0.17",
 	"engines": {
 		"vscode": "^1.46.0"
 	},
@@ -48,7 +48,17 @@
 			{
 				"command": "python2go.pipInstall",
 				"category": "Python2Go",
-				"title": "Configure"
+				"title": "Install pip package"
+			},
+			{
+				"command": "python2go.pipUninstall",
+				"category": "Python2Go",
+				"title": "Uninstall pip package"
+			},
+			{
+				"command": "python2go.pipUpgradePackage",
+				"category": "Python2Go",
+				"title": "Upgrade a pip package to the latest version"
 			},
 			{
 				"command": "python2go.configure",
@@ -58,7 +68,12 @@
 			{
 				"command": "python2go.uninstall",
 				"category": "Python2Go",
-				"title": "Uninstall"
+				"title": "Uninstall Python"
+			},
+			{
+				"command": "python2go.pipUpgradeSelf",
+				"category": "Python2Go",
+				"title": "Upgrade pip to the latest version"
 			}
 		],
 		"menus": {
@@ -72,6 +87,25 @@
 					"when": "python2go:isPythonInstalled"
 				}
 			]
+		},
+		"configuration": {
+			"title": "Python2Go",
+			"properties": {
+				"python2go.skip_installation_check": {
+					"type": [
+						"boolean"
+					],
+					"default": false,
+					"description": "Wheter to check if python is installed (using choco on windows, pyenv on osx)."
+				},
+				"python2go.python_version": {
+					"type": [
+						"string"
+					],
+					"default": "3.8.5",
+					"description": "The python version which will be installed"
+				}
+			}
 		}
 	},
 	"scripts": {

@@ -22,11 +22,14 @@ import {
   vscodeInstallPackageManager,
   inOsShell,
 } from "./package-manager/src/packageManager";
-const PYTHON_VERSION = "3.8.3";
-const CHOCO_LOG_VERSION_REGEXP = new RegExp(
-  `Successfully installed 'python3 ${PYTHON_VERSION}'\.\r?\n(.*\r?\n)+?.*Installed to: '(?<location>.*)'`,
-  "gi"
-);
+import { resolve } from "path";
+const DEFAULT_PYTHON_VERSION = "3.8.5";
+
+export enum Py2GoSettings {
+  SkipInstallationCheck = "python2go.skip_installation_check",
+  PythonVersion = "python2go.python_version",
+}
+
 const CHOCO_LOG_LOCATION_REGEXP = /Installed to: '(?<location>.*)'/i;
 
 function installPythonWindows(
@@ -39,7 +42,7 @@ function installPythonWindows(
   const logPath = `${context.logPath}\\chocolog_${Date.now()}.log`;
 
   return inElevatedShell(
-    `choco install -y python3 --side-by-side --version=${PYTHON_VERSION} | Tee-Object -FilePath ${logPath} | Write-Output`
+    `choco install -y python3 --side-by-side --version=${pythonVersion()} | Tee-Object -FilePath ${logPath} | Write-Output`
   ).then((result) => {
     if (result.error) {
       vscode.window.showErrorMessage(
@@ -51,16 +54,25 @@ function installPythonWindows(
   });
 }
 
+function pythonVersion(): string {
+  const conf = vscode.workspace.getConfiguration();
+  return conf.get(Py2GoSettings.PythonVersion, DEFAULT_PYTHON_VERSION);
+}
+
 function winInstallationLocation(): Thenable<TaskMessage> {
   return logSummary().then((summary) => {
-    const installations = summary.match(CHOCO_LOG_VERSION_REGEXP);
+    const log_version_regexp = new RegExp(
+      `Successfully installed 'python3 ${pythonVersion()}'\.\r?\n(.*\r?\n)+?.*Installed to: '(?<location>.*)'`,
+      "gi"
+    );
+    const installations = summary.match(log_version_regexp);
 
     const locations = installations?.map((install) => {
       const locationMatch = install.match(CHOCO_LOG_LOCATION_REGEXP);
       return locationMatch!.groups!.location;
     });
     if (!locations || locations.length === 0) {
-      return ErrorMsg(`Python ${PYTHON_VERSION} not installed`);
+      return ErrorMsg(`Python ${pythonVersion()} not installed`);
     }
     return SuccessMsg(locations[locations.length - 1]);
   });
@@ -68,11 +80,11 @@ function winInstallationLocation(): Thenable<TaskMessage> {
 
 function osxInstallationLocation(): string {
   const homeFolder = execSync("echo $HOME").toString().trim();
-  return `${homeFolder}/.pyenv/versions/${PYTHON_VERSION}/bin/python`;
+  return `${homeFolder}/.pyenv/versions/${pythonVersion()}/bin/python`;
 }
 
 function setContext(pythonInstalled: boolean) {
-  Logger.log(`Python ${PYTHON_VERSION} installed:`, pythonInstalled);
+  Logger.log(`Python ${pythonVersion()} installed:`, pythonInstalled);
   return vscode.commands
     .executeCommand(
       "setContext",
@@ -84,14 +96,14 @@ function setContext(pythonInstalled: boolean) {
 
 function isPythonInstalled(): Thenable<boolean> {
   if (process.platform === "darwin") {
-    return shellExec(`pyenv versions | grep ${PYTHON_VERSION}`).then(
+    return shellExec(`pyenv versions | grep ${pythonVersion()}`).then(
       (result) => {
         const isInstalled = result.success && result.msg.length > 0;
         return setContext(isInstalled);
       }
     );
   } else if (process.platform === "win32") {
-    return inShell(`choco list -lo python3 --version ${PYTHON_VERSION}`).then(
+    return inShell(`choco list -lo python3 --version ${pythonVersion()}`).then(
       (result) => {
         const isInstalled =
           result.success && /1 packages installed\./i.test(result.msg);
@@ -117,7 +129,7 @@ function installPythonWithPyEnv(
   context: vscode.ExtensionContext
 ): Thenable<TaskMessage> {
   return shellExec(
-    `cat -s ${`${context.extensionPath}/bin/install_pyenv_python.sh`} | bash -s "${PYTHON_VERSION}" && echo "Success."`
+    `cat -s ${`${context.extensionPath}/bin/install_pyenv_python.sh`} | bash -s "${pythonVersion()}" && echo "Success."`
   ).then((result) => {
     if ((result.msg ?? result.error ?? "").endsWith("Success.")) {
       if (!result.success) {
@@ -155,7 +167,7 @@ function installPython(
         return vscode.window.withProgress(
           {
             location: vscode.ProgressLocation.Notification,
-            title: `Python2go]: Installing Python ${PYTHON_VERSION}`,
+            title: `Python2go]: Installing Python ${pythonVersion()}`,
           },
           () => {
             progress.report({ message: "Install Python", increment: 35 });
@@ -186,14 +198,14 @@ function uninstallPython(
     (_token) => {
       return isPythonInstalled().then((isInstalled) => {
         if (!isInstalled) {
-          return ErrorMsg(`Python ${PYTHON_VERSION} was not installed.`);
+          return ErrorMsg(`Python ${pythonVersion()} was not installed.`);
         }
         if (process.platform === "darwin") {
           return shellExec(
-            `cat -s ${`${context.extensionPath}/bin/uninstall_python.sh`} | bash -s "${PYTHON_VERSION}"`
+            `cat -s ${`${context.extensionPath}/bin/uninstall_python.sh`} | bash -s "${pythonVersion()}"`
           );
         } else if (process.platform === "win32") {
-          return chocoUninstall("python3", PYTHON_VERSION);
+          return chocoUninstall("python3", pythonVersion());
         }
         return ErrorMsg(`Plattform ${process.platform} not supported.`);
       });
@@ -209,11 +221,11 @@ function configure(location?: string, showErrorMsg: boolean = true) {
   return isPythonInstalled().then((isInstalled) => {
     if (!isInstalled && showErrorMsg) {
       vscode.window.showErrorMessage(
-        `Python ${PYTHON_VERSION} is not installed.`
+        `Python ${pythonVersion()} is not installed.`
       );
     }
     if (process.platform === "darwin") {
-      execSync(`pyenv global ${PYTHON_VERSION}`);
+      execSync(`pyenv global ${pythonVersion()}`);
     }
     const configuration = vscode.workspace.getConfiguration();
     configuration
@@ -228,13 +240,21 @@ function configure(location?: string, showErrorMsg: boolean = true) {
           isInstalled ? location : undefined,
           vscode.ConfigurationTarget.Global
         );
+      }).then(() => {
+        configuration.update(
+          Py2GoSettings.PythonVersion,
+          pythonVersion(),
+          vscode.ConfigurationTarget.Global
+        );
       });
   });
 }
 
 function pip(cmd: string) {
   const pipCmd = process.platform === "win32" ? "pip" : "pip3";
-  return inOsShell(`${pipCmd} --disable-pip-version-check ${cmd}`, { requiredCmd: pipCmd });
+  return inOsShell(`${pipCmd} --disable-pip-version-check ${cmd}`, {
+    requiredCmd: pipCmd,
+  });
 }
 
 function sudoPip(cmd: string) {
@@ -252,7 +272,7 @@ function installedPipPackages(): Thenable<
   return pip("list").then((result) => {
     if (result.success) {
       const pkgs = result.msg.split(/\r?\n/).slice(2);
-      Logger.log('Installed pip packages:');
+      Logger.log("Installed pip packages:");
       return pkgs.map((pkg) => {
         Logger.log(pkg);
         // \S --> any non whitespace character
@@ -273,21 +293,27 @@ function installedPipPackages(): Thenable<
 export function activate(context: vscode.ExtensionContext) {
   Logger.configure("python2go", "Python2Go");
   Logger.log("Welcome to Python2Go");
-
-  isPythonInstalled().then((isInstalled) => {
-    if (!isInstalled) {
-      vscode.window
-        .showWarningMessage(
-          `Python ${PYTHON_VERSION} is not installed`,
-          "Install now"
-        )
-        .then((selection) => {
-          if (selection === "Install now") {
-            return vscode.commands.executeCommand("python2go.install");
-          }
-        });
-    }
-  });
+  const configuration = vscode.workspace.getConfiguration();
+  if (!configuration.get(Py2GoSettings.SkipInstallationCheck, false)) {
+    isPythonInstalled().then((isInstalled) => {
+      if (!isInstalled) {
+        vscode.window
+          .showWarningMessage(
+            `Python ${pythonVersion()} is not installed`,
+            "Install now",
+            "Disable Check"
+          )
+          .then((selection) => {
+            if (selection === "Install now") {
+              return vscode.commands.executeCommand("python2go.install");
+            } else if (selection === "Disable Check") {
+              const conf = vscode.workspace.getConfiguration();
+              conf.update(Py2GoSettings.SkipInstallationCheck, true);
+            }
+          });
+      }
+    });
+  }
 
   // The command has been defined in the package.json file
   // Now provide the implementation of the command with registerCommand
@@ -345,12 +371,12 @@ export function activate(context: vscode.ExtensionContext) {
         uninstallPython(context).then((msg) => {
           configure(undefined, false);
           vscode.window.showInformationMessage(
-            `Uninstalled Python ${PYTHON_VERSION}.\n${msg}`
+            `Uninstalled Python ${pythonVersion()}.\n${msg}`
           );
         });
       } catch (error) {
         vscode.window.showErrorMessage(
-          `Could not uninstall Python ${PYTHON_VERSION}:\n${error}`
+          `Could not uninstall Python ${pythonVersion()}:\n${error}`
         );
       }
     }
@@ -362,12 +388,12 @@ export function activate(context: vscode.ExtensionContext) {
       return isPythonInstalled().then((isInstalled) => {
         if (isInstalled) {
           vscode.window.showInformationMessage(
-            `Python ${PYTHON_VERSION} is installed on your system`
+            `Python ${pythonVersion()} is installed on your system`
           );
         } else {
           vscode.window
             .showWarningMessage(
-              `Python ${PYTHON_VERSION} is not installed`,
+              `Python ${pythonVersion()} is not installed`,
               "Install now"
             )
             .then((selection) => {
@@ -451,6 +477,118 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  let pipUpgradeSelfDisposer = vscode.commands.registerCommand(
+    "python2go.pipUpgradeSelf",
+    () => {
+      return pip("install --upgrade pip").then((result) => {
+        if (result.success) {
+            vscode.window.showInformationMessage(
+              `Upgraded pip to the latest version`
+            );
+        } else {
+          vscode.window.showErrorMessage(
+            `Error upgrading pip: ${result.error}`
+          );
+        }
+      });
+    }
+  );
+
+  let pipInstallDisposer = vscode.commands.registerCommand(
+    "python2go.pipInstall",
+    () => {
+      vscode.window
+        .showInputBox({
+          prompt: "Pip package to install",
+        })
+        .then((pipPkg) => {
+          if (pipPkg) {
+            return pip(`install --user ${pipPkg}`).then((result) => {
+              if (result.success) {
+                installedPipPackages().then((pkgs) => {
+                  const updatedPkg = pkgs.find(
+                    (pkg) => pkg.package === pipPkg
+                  );
+                  vscode.window.showInformationMessage(
+                    `Installed pip package ${pipPkg} V${updatedPkg?.version}`
+                  );
+                });
+              }
+            });
+          }
+        });
+    }
+  );
+
+  let pipUpgradePackageDisposer = vscode.commands.registerCommand(
+    "python2go.pipUpgradePackage",
+    () => {
+      installedPipPackages().then((pkgs) => {
+        vscode.window
+          .showQuickPick(
+            pkgs.map((pkg) => ({
+              label: pkg.package,
+              description: `V${pkg.version}`,
+            }))
+          )
+          .then((selected) => {
+            if (selected) {
+              pip(`install --user ${selected.label} --upgrade`).then(
+                (result) => {
+                  if (result.success) {
+                    installedPipPackages().then((pkgs) => {
+                      const updatedPkg = pkgs.find(
+                        (pkg) => pkg.package === selected.label
+                      );
+                      vscode.window.showInformationMessage(
+                        `Updated pip package ${selected.label} from ${selected.description} to V${updatedPkg?.version}`
+                      );
+                    });
+                  } else {
+                    vscode.window.showErrorMessage(
+                      `Error updating ${selected.label}: ${result.error}`
+                    );
+                  }
+                }
+              );
+            }
+          });
+      });
+    }
+  );
+
+  let pipUninstallDisposer = vscode.commands.registerCommand(
+    "python2go.pipUninstall",
+    () => {
+      installedPipPackages().then((pkgs) => {
+        vscode.window
+          .showQuickPick(
+            pkgs.map((pkg) => ({
+              label: pkg.package,
+              description: `V${pkg.version}`,
+            }))
+          )
+          .then((selected) => {
+            if (selected) {
+              pip(`uninstall -y ${selected.label}`).then(
+                (result) => {
+                  if (result.success) {
+                      vscode.window.showInformationMessage(
+                        `Uninstalled pip package ${selected.label}`
+                      );
+                  } else {
+                    vscode.window.showErrorMessage(
+                      `Error uninstalling ${selected.label}: ${result.error}`
+                    );
+                  }
+                }
+              );
+            }
+          });
+      });
+    }
+  );
+
   context.subscriptions.push(installDisposer);
   context.subscriptions.push(configureDisposer);
   context.subscriptions.push(uninstallDisposer);
@@ -460,6 +598,10 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(sudoPipInstaller);
   context.subscriptions.push(pipPackages);
   context.subscriptions.push(installationLocationProvider);
+  context.subscriptions.push(pipUpgradeSelfDisposer);
+  context.subscriptions.push(pipInstallDisposer);
+  context.subscriptions.push(pipUpgradePackageDisposer);
+  context.subscriptions.push(pipUninstallDisposer);
 }
 
 // this method is called when your extension is deactivated
