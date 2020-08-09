@@ -246,6 +246,15 @@ function configure(location?: string, showErrorMsg: boolean = true) {
           pythonVersion(),
           vscode.ConfigurationTarget.Global
         );
+      })
+      .then(() => {
+        if (process.platform === "darwin") {
+          configuration.update(
+            "python.venvPath",
+            "~/.pyenv",
+            vscode.ConfigurationTarget.Global
+          );
+        }
       });
   });
 }
