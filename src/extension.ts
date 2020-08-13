@@ -15,7 +15,6 @@ import {
   vscodeInstallPackageManager,
   inOsShell,
 } from "./package-manager/src/packageManager";
-import { resolve } from "path";
 
 export enum Py2GoSettings {
   SkipInstallationCheck = "python2go.skip_installation_check",
@@ -31,12 +30,13 @@ interface PyVersion {
   version: string;
 }
 
-function addUserPathToUsersEnv(): Thenable<TaskMessage> {
+function addUserPathToUsersEnv(pyVersion: PyVersion): Thenable<TaskMessage> {
   if (process.platform !== "win32") {
     return new Promise<TaskMessage>((resolve) => resolve(SuccessMsg("OK")));
   }
   return inOsShell("python -m site --user-base", {
     requiredCmd: "python",
+    disableChocoCheck: true
   }).then((result) => {
     if (result.error) {
       vscode.window.showErrorMessage(
@@ -44,13 +44,15 @@ function addUserPathToUsersEnv(): Thenable<TaskMessage> {
       );
       return result;
     }
-    const pyVersion = pythonVersion().split(".").slice(0, 2).join("");
     const userSitePath = (result.msg ?? "").trim();
-    const pythonPath = `${userSitePath}\\Python${pyVersion}`;
+    const pythonPath = `${userSitePath}\\Python${pyVersion.major}${pyVersion.minor}`;
     const pythonVersionPath = `${pythonPath}\\Scripts`;
 
     return inOsShell(
-      "[System.Environment]::GetEnvironmentVariable('Path','User')"
+      "[System.Environment]::GetEnvironmentVariable('Path','User')",
+      {
+        disableChocoCheck: true
+      }
     ).then((result) => {
       if (result.error || !result.msg) {
         vscode.window.showErrorMessage(
@@ -66,14 +68,19 @@ function addUserPathToUsersEnv(): Thenable<TaskMessage> {
 
       if (!usrPath.includes(pythonPath)) {
         return inOsShell(
-          `setx Path '${pathes.join(";")};${pythonVersionPath}'`
+          `setx Path '${pathes.join(";")};${pythonVersionPath}'`,
+          {
+            disableChocoCheck: true
+          }
         ).then((result) => {
           if (result.error || !result.msg) {
             vscode.window.showErrorMessage(
               `Trouble setting users environment path: ${result.error}`
             );
+            Logger.warn(`Could not add --user python path to windows PATH: ${pythonVersionPath}`);
             return result;
           }
+          Logger.log('Added --user python path to windows PATH');
           vscode.window.showInformationMessage(
             `Successfully added '${pythonVersionPath}' to the users path`
           );
@@ -102,7 +109,7 @@ function winInstallationLocation(): Thenable<TaskMessage> {
     }
 
     return inOsShell(
-      "[System.Environment]::GetEnvironmentVariable('Path','User')"
+      "[System.Environment]::GetEnvironmentVariable('Path','User')", { disableChocoCheck: true }
     ).then((result) => {
       if (result.error || !result.msg) {
         return ErrorMsg("could not read environment");
@@ -120,15 +127,18 @@ function winInstallationLocation(): Thenable<TaskMessage> {
   });
 }
 
-function setContext(pythonInstalled: boolean) {
-  Logger.log(`Python ${pythonVersion()} installed:`, pythonInstalled);
-  return vscode.commands
-    .executeCommand(
-      "setContext",
-      "python2go:isPythonInstalled",
-      pythonInstalled
-    )
-    .then(() => pythonInstalled);
+function setContext(pyVersion: PyVersion | false) {
+  if (pyVersion === false) {
+    Logger.log(`Python installed: false`);
+  } else {
+    Logger.log(`Python ${pyVersion.version} installed.`);
+    return vscode.commands
+      .executeCommand(
+        "setContext",
+        "python2go:isPythonInstalled",
+        true
+      );
+  }
 }
 
 function isPythonInstalled(): Thenable<false | PyVersion> {
@@ -156,7 +166,7 @@ function isPythonInstalled(): Thenable<false | PyVersion> {
         release: Number.parseInt(res.groups.release, 10),
         version: `${res.groups.major}.${res.groups.minor}.${res.groups.release}`,
       };
-      setContext(true);
+      setContext(version);
 
       return version;
     });
@@ -308,6 +318,7 @@ function pip(cmd: string) {
   const pipCmd = process.platform === "win32" ? "pip" : "pip3";
   return inOsShell(`${pipCmd} --disable-pip-version-check ${cmd}`, {
     requiredCmd: pipCmd,
+    disableChocoCheck: true
   });
 }
 
@@ -317,6 +328,7 @@ function sudoPip(cmd: string) {
     requiredCmd: pipCmd,
     sudo: true,
     promptMsg: `to execute "sudo pip3 ${cmd}"`,
+    disableChocoCheck: true
   });
 }
 
@@ -348,9 +360,9 @@ export function activate(context: vscode.ExtensionContext) {
   Logger.configure("python2go", "Python2Go");
   Logger.log("Welcome to Python2Go");
   const configuration = vscode.workspace.getConfiguration();
-  if (!configuration.get(Py2GoSettings.SkipInstallationCheck, false)) {
-    isPythonInstalled().then((isInstalled) => {
-      if (!isInstalled) {
+  isPythonInstalled().then((pyVersion) => {
+    if (!pyVersion) {
+      if (!configuration.get(Py2GoSettings.SkipInstallationCheck, false)) {
         if (process.platform === "darwin") {
           vscode.window
             .showWarningMessage(
@@ -388,8 +400,29 @@ export function activate(context: vscode.ExtensionContext) {
             });
         }
       }
-    });
-  }
+    } else {
+      if (process.platform === 'win32') {
+        if (!context.globalState.get('pythonUpdatedPath')) {
+          addUserPathToUsersEnv(pyVersion).then((result) => {
+            if (result.error) {
+              vscode.window.showErrorMessage("Python could not be added to PATH!");
+            } if (result.success) {
+              context.globalState.update('pythonUpdatedPath', true);
+            }
+          });
+        }
+        if (!context.globalState.get('pythonConfigured')) {
+          installationLocation().then((result) => {
+            if (result.success) {
+              configure(result.msg).then(() => {
+                context.globalState.update('pythonConfigured', true);
+              });
+            }
+          });
+        }
+      }
+    }
+  });
 
   // The command has been defined in the package.json file
   // Now provide the implementation of the command with registerCommand
@@ -673,16 +706,24 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage("Only available on windows");
         return;
       }
-      addUserPathToUsersEnv().then((result) => {
-        if (result.error) {
-          vscode.window.showErrorMessage(
-            `Error adding user site to path: ${result.msg}: ${result.error}`
-          );
-        } else {
-          vscode.window.showInformationMessage(
-            "Successfully added to path. Restart vs code to take effect."
-          );
+      isPythonInstalled().then((version) => {
+        if (!version) {
+          vscode.window.showInformationMessage("Python not installed yet");
+          return;
         }
+        addUserPathToUsersEnv(version).then((result) => {
+          if (result.error) {
+            vscode.window.showErrorMessage(
+              `Error adding user site to path: ${result.msg}: ${result.error}`
+            );
+          }
+          if (result.success) {
+            context.globalState.update('pythonUpdatedPath', true);
+            vscode.window.showInformationMessage(
+              "Successfully added to path. Restart vs code to take effect."
+            );
+          }
+        });
       });
     }
   );
@@ -703,4 +744,4 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }

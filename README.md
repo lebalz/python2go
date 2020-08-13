@@ -15,7 +15,7 @@ VS Code checks at startup, wheter a python version is installed
 
 Install Python yourself and make sure to add python to your PATH. You can access this by checking ths "Add Python to Path" option to true.
 
-![]()
+![install python](python_install_win.jpg)
 
 ## OSX
 
