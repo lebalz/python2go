@@ -13,9 +13,9 @@ VS Code checks at startup, wheter a python version is installed
 
 ## Windows
 
-A recent version (3.8.3) is downloaded and installed. Tkinter and test suite are included and the exe will be added to your PATH.
+Install Python yourself and make sure to add python to your PATH. You can access this by checking ths "Add Python to Path" option to true.
 
-The packagemanager [chocolatey](https://chocolatey.org/) is used to install python. Chocolatey is installed when not present on the system. Admin rights are needed to install chocolatey and python - you will be prompted to confirm admin rights to powershell.
+![]()
 
 ## OSX
 
