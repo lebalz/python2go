@@ -36,7 +36,7 @@ function addUserPathToUsersEnv(pyVersion: PyVersion): Thenable<TaskMessage> {
   }
   return inOsShell("python -m site --user-base", {
     requiredCmd: "python",
-    disableChocoCheck: true
+    disableChocoCheck: true,
   }).then((result) => {
     if (result.error) {
       vscode.window.showErrorMessage(
@@ -51,7 +51,7 @@ function addUserPathToUsersEnv(pyVersion: PyVersion): Thenable<TaskMessage> {
     return inOsShell(
       "[System.Environment]::GetEnvironmentVariable('Path','User')",
       {
-        disableChocoCheck: true
+        disableChocoCheck: true,
       }
     ).then((result) => {
       if (result.error || !result.msg) {
@@ -70,17 +70,19 @@ function addUserPathToUsersEnv(pyVersion: PyVersion): Thenable<TaskMessage> {
         return inOsShell(
           `setx Path '${pathes.join(";")};${pythonVersionPath}'`,
           {
-            disableChocoCheck: true
+            disableChocoCheck: true,
           }
         ).then((result) => {
           if (result.error || !result.msg) {
             vscode.window.showErrorMessage(
               `Trouble setting users environment path: ${result.error}`
             );
-            Logger.warn(`Could not add --user python path to windows PATH: ${pythonVersionPath}`);
+            Logger.warn(
+              `Could not add --user python path to windows PATH: ${pythonVersionPath}`
+            );
             return result;
           }
-          Logger.log('Added --user python path to windows PATH');
+          Logger.log("Added --user python path to windows PATH");
           vscode.window.showInformationMessage(
             `Successfully added '${pythonVersionPath}' to the users path`
           );
@@ -109,7 +111,8 @@ function winInstallationLocation(): Thenable<TaskMessage> {
     }
 
     return inOsShell(
-      "[System.Environment]::GetEnvironmentVariable('Path','User')", { disableChocoCheck: true }
+      "[System.Environment]::GetEnvironmentVariable('Path','User')",
+      { disableChocoCheck: true }
     ).then((result) => {
       if (result.error || !result.msg) {
         return ErrorMsg("could not read environment");
@@ -132,12 +135,11 @@ function setContext(pyVersion: PyVersion | false) {
     Logger.log(`Python installed: false`);
   } else {
     Logger.log(`Python ${pyVersion.version} installed.`);
-    return vscode.commands
-      .executeCommand(
-        "setContext",
-        "python2go:isPythonInstalled",
-        true
-      );
+    return vscode.commands.executeCommand(
+      "setContext",
+      "python2go:isPythonInstalled",
+      true
+    );
   }
 }
 
@@ -318,7 +320,7 @@ function pip(cmd: string) {
   const pipCmd = process.platform === "win32" ? "pip" : "pip3";
   return inOsShell(`${pipCmd} --disable-pip-version-check ${cmd}`, {
     requiredCmd: pipCmd,
-    disableChocoCheck: true
+    disableChocoCheck: true,
   });
 }
 
@@ -328,7 +330,7 @@ function sudoPip(cmd: string) {
     requiredCmd: pipCmd,
     sudo: true,
     promptMsg: `to execute "sudo pip3 ${cmd}"`,
-    disableChocoCheck: true
+    disableChocoCheck: true,
   });
 }
 
@@ -401,21 +403,24 @@ export function activate(context: vscode.ExtensionContext) {
         }
       }
     } else {
-      if (process.platform === 'win32') {
-        if (!context.globalState.get('pythonUpdatedPath')) {
+      if (process.platform === "win32") {
+        if (!context.globalState.get("pythonUpdatedPath")) {
           addUserPathToUsersEnv(pyVersion).then((result) => {
             if (result.error) {
-              vscode.window.showErrorMessage("Python could not be added to PATH!");
-            } if (result.success) {
-              context.globalState.update('pythonUpdatedPath', true);
+              vscode.window.showErrorMessage(
+                "Python could not be added to PATH!"
+              );
+            }
+            if (result.success) {
+              context.globalState.update("pythonUpdatedPath", true);
             }
           });
         }
-        if (!context.globalState.get('pythonConfigured')) {
+        if (!context.globalState.get("pythonConfigured")) {
           installationLocation().then((result) => {
             if (result.success) {
               configure(result.msg).then(() => {
-                context.globalState.update('pythonConfigured', true);
+                context.globalState.update("pythonConfigured", true);
               });
             }
           });
@@ -718,7 +723,7 @@ export function activate(context: vscode.ExtensionContext) {
             );
           }
           if (result.success) {
-            context.globalState.update('pythonUpdatedPath', true);
+            context.globalState.update("pythonUpdatedPath", true);
             vscode.window.showInformationMessage(
               "Successfully added to path. Restart vs code to take effect."
             );
@@ -744,4 +749,4 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() { }
+export function deactivate() {}
