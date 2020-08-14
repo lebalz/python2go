@@ -177,6 +177,30 @@ function isPythonInstalled(): Thenable<false | PyVersion> {
   }
 }
 
+function isPyEnvInstalled(): Thenable<boolean> {
+  try {
+    return shellExec("python --version").then((result) => {
+      if (!result.success) {
+        return false;
+      }
+      const res = result.msg.match(
+        /pyenv (?<major>\d)\.(?<minor>\d)\.(?<release>\d)/
+      );
+      if (
+        !res ||
+        res.groups?.major === undefined ||
+        res.groups?.minor === undefined
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+  } catch (exception) {
+    return new Promise((resolve) => resolve(false));
+  }
+}
+
 function installationLocation(): Thenable<TaskMessage> {
   if (process.platform === "darwin") {
     return new Promise((resolve) =>
@@ -219,7 +243,7 @@ function installPython(
   progress: Progress
 ): Thenable<TaskMessage> {
   return isPythonInstalled().then((isInstalled) => {
-    if (isInstalled) {
+    if (isInstalled && process.platform === 'darwin') {
       return installationLocation();
     }
     return vscodeInstallPackageManager(context, progress, 30).then(
@@ -425,6 +449,29 @@ export function activate(context: vscode.ExtensionContext) {
             }
           });
         }
+      } else if (process.platform === "darwin") {
+        isPyEnvInstalled().then((hasPyenv) => {
+          if (!hasPyenv) {
+            vscode.window
+              .showWarningMessage(
+                `Python ${pythonVersion()} is not installed with pyenv`,
+                "Install now",
+                "Disable Check"
+              )
+              .then((selection) => {
+                if (selection === "Install now") {
+                  return vscode.commands.executeCommand("python2go.install");
+                } else if (selection === "Disable Check") {
+                  const conf = vscode.workspace.getConfiguration();
+                  conf.update(
+                    Py2GoSettings.SkipInstallationCheck,
+                    true,
+                    vscode.ConfigurationTarget.Global
+                  );
+                }
+              });
+          }
+        });
       }
     }
   });
