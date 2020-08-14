@@ -179,7 +179,7 @@ function isPythonInstalled(): Thenable<false | PyVersion> {
 
 function isPyEnvInstalled(): Thenable<boolean> {
   try {
-    return shellExec("python --version").then((result) => {
+    return shellExec("pyenv --version").then((result) => {
       if (!result.success) {
         return false;
       }
