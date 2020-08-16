@@ -243,7 +243,7 @@ function installPython(
   progress: Progress
 ): Thenable<TaskMessage> {
   return isPythonInstalled().then((isInstalled) => {
-    if (isInstalled && process.platform === 'darwin') {
+    if (isInstalled && process.platform === "darwin") {
       return installationLocation();
     }
     return vscodeInstallPackageManager(context, progress, 30).then(
@@ -585,7 +585,6 @@ export function activate(context: vscode.ExtensionContext) {
   let pipInstaller = vscode.commands.registerCommand(
     "python2go.pip",
     (command) => {
-      Logger.show();
       return vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
@@ -610,7 +609,6 @@ export function activate(context: vscode.ExtensionContext) {
   let sudoPipInstaller = vscode.commands.registerCommand(
     "python2go.sudoPip",
     (command) => {
-      Logger.show();
       return vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
@@ -642,18 +640,29 @@ export function activate(context: vscode.ExtensionContext) {
   let pipUpgradeSelfDisposer = vscode.commands.registerCommand(
     "python2go.pipUpgradeSelf",
     () => {
+      Logger.show();
       const target = process.platform === "win32" ? "--user" : "";
-      return pip(`install ${target} --upgrade pip`).then((result) => {
-        if (result.success) {
-          vscode.window.showInformationMessage(
-            `Upgraded pip to the latest version`
-          );
-        } else {
-          vscode.window.showErrorMessage(
-            `Error upgrading pip: ${result.error}`
-          );
+      const cmd = `install ${target} --upgrade pip`;
+      return vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `[Python2go]: pip ${cmd}`,
+        },
+        (progress) => {
+          return pip(cmd).then((result) => {
+            if (result.success) {
+              vscode.window.showInformationMessage(
+                `Upgraded pip to the latest version`
+              );
+            } else {
+              vscode.window.showErrorMessage(
+                `Error upgrading pip: ${result.error}`
+              );
+            }
+            Logger.hide();
+          });
         }
-      });
+      );
     }
   );
 
@@ -667,16 +676,29 @@ export function activate(context: vscode.ExtensionContext) {
         .then((pipPkg) => {
           if (pipPkg) {
             const target = process.platform === "win32" ? "--user" : "";
-            return pip(`install ${target} ${pipPkg}`).then((result) => {
-              if (result.success) {
-                installedPipPackages().then((pkgs) => {
-                  const updatedPkg = pkgs.find((pkg) => pkg.package === pipPkg);
-                  vscode.window.showInformationMessage(
-                    `Installed pip package ${pipPkg} V${updatedPkg?.version}`
-                  );
+            const cmd = `install ${target} ${pipPkg}`;
+            Logger.show();
+            return vscode.window.withProgress(
+              {
+                location: vscode.ProgressLocation.Notification,
+                title: `[Python2go]: pip ${cmd}`,
+              },
+              (progress) => {
+                return pip(cmd).then((result) => {
+                  if (result.success) {
+                    installedPipPackages().then((pkgs) => {
+                      const updatedPkg = pkgs.find(
+                        (pkg) => pkg.package === pipPkg
+                      );
+                      vscode.window.showInformationMessage(
+                        `Installed pip package ${pipPkg} V${updatedPkg?.version}`
+                      );
+                    });
+                  }
+                  Logger.hide();
                 });
               }
-            });
+            );
           }
         });
     }
@@ -696,23 +718,31 @@ export function activate(context: vscode.ExtensionContext) {
           .then((selected) => {
             if (selected) {
               const target = process.platform === "win32" ? "--user" : "";
-
-              pip(`install ${target} --upgrade ${selected.label}`).then(
-                (result) => {
-                  if (result.success) {
-                    installedPipPackages().then((pkgs) => {
-                      const updatedPkg = pkgs.find(
-                        (pkg) => pkg.package === selected.label
+              const cmd = `install ${target} --upgrade ${selected.label}`;
+              Logger.show();
+              return vscode.window.withProgress(
+                {
+                  location: vscode.ProgressLocation.Notification,
+                  title: `[Python2go]: pip ${cmd}`,
+                },
+                (progress) => {
+                  return pip(cmd).then((result) => {
+                    if (result.success) {
+                      installedPipPackages().then((pkgs) => {
+                        const updatedPkg = pkgs.find(
+                          (pkg) => pkg.package === selected.label
+                        );
+                        vscode.window.showInformationMessage(
+                          `Updated pip package ${selected.label} from ${selected.description} to V${updatedPkg?.version}`
+                        );
+                      });
+                    } else {
+                      vscode.window.showErrorMessage(
+                        `Error updating ${selected.label}: ${result.error}`
                       );
-                      vscode.window.showInformationMessage(
-                        `Updated pip package ${selected.label} from ${selected.description} to V${updatedPkg?.version}`
-                      );
-                    });
-                  } else {
-                    vscode.window.showErrorMessage(
-                      `Error updating ${selected.label}: ${result.error}`
-                    );
-                  }
+                    }
+                    Logger.hide();
+                  });
                 }
               );
             }
@@ -734,17 +764,29 @@ export function activate(context: vscode.ExtensionContext) {
           )
           .then((selected) => {
             if (selected) {
-              pip(`uninstall -y ${selected.label}`).then((result) => {
-                if (result.success) {
-                  vscode.window.showInformationMessage(
-                    `Uninstalled pip package ${selected.label}`
-                  );
-                } else {
-                  vscode.window.showErrorMessage(
-                    `Error uninstalling ${selected.label}: ${result.error}`
-                  );
+              const target = process.platform === "win32" ? "--user" : "";
+              const cmd = `uninstall -y ${selected.label}`;
+              Logger.show();
+              return vscode.window.withProgress(
+                {
+                  location: vscode.ProgressLocation.Notification,
+                  title: `[Python2go]: pip ${cmd}`,
+                },
+                (progress) => {
+                  return pip(cmd).then((result) => {
+                    if (result.success) {
+                      vscode.window.showInformationMessage(
+                        `Uninstalled pip package ${selected.label}`
+                      );
+                    } else {
+                      vscode.window.showErrorMessage(
+                        `Error uninstalling ${selected.label}: ${result.error}`
+                      );
+                    }
+                    Logger.hide();
+                  });
                 }
-              });
+              );
             }
           });
       });
