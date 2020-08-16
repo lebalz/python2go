@@ -594,11 +594,11 @@ export function activate(context: vscode.ExtensionContext) {
           return pip(command).then((result) => {
             if (result.success) {
               progress.report({ message: "Success", increment: 100 });
-              vscode.window.showInformationMessage(
+              return vscode.window.showInformationMessage(
                 `[Python2go]: Successfully executed "pip ${command}"`
               );
             } else {
-              vscode.window.showErrorMessage(`pip ${command}: ${result.error}`);
+              return vscode.window.showErrorMessage(`pip ${command}: ${result.error}`);
             }
           });
         }
@@ -669,7 +669,7 @@ export function activate(context: vscode.ExtensionContext) {
   let pipInstallDisposer = vscode.commands.registerCommand(
     "python2go.pipInstall",
     () => {
-      vscode.window
+      return vscode.window
         .showInputBox({
           prompt: "Pip package to install",
         })
@@ -686,11 +686,11 @@ export function activate(context: vscode.ExtensionContext) {
               (progress) => {
                 return pip(cmd).then((result) => {
                   if (result.success) {
-                    installedPipPackages().then((pkgs) => {
+                    return installedPipPackages().then((pkgs) => {
                       const updatedPkg = pkgs.find(
                         (pkg) => pkg.package === pipPkg
                       );
-                      vscode.window.showInformationMessage(
+                      return vscode.window.showInformationMessage(
                         `Installed pip package ${pipPkg} V${updatedPkg?.version}`
                       );
                     });
@@ -707,8 +707,8 @@ export function activate(context: vscode.ExtensionContext) {
   let pipUpgradePackageDisposer = vscode.commands.registerCommand(
     "python2go.pipUpgradePackage",
     () => {
-      installedPipPackages().then((pkgs) => {
-        vscode.window
+      return installedPipPackages().then((pkgs) => {
+        return vscode.window
           .showQuickPick(
             pkgs.map((pkg) => ({
               label: pkg.package,
@@ -728,20 +728,21 @@ export function activate(context: vscode.ExtensionContext) {
                 (progress) => {
                   return pip(cmd).then((result) => {
                     if (result.success) {
-                      installedPipPackages().then((pkgs) => {
+                      return installedPipPackages().then((pkgs) => {
                         const updatedPkg = pkgs.find(
                           (pkg) => pkg.package === selected.label
                         );
                         vscode.window.showInformationMessage(
                           `Updated pip package ${selected.label} from ${selected.description} to V${updatedPkg?.version}`
                         );
+                        Logger.hide();
                       });
                     } else {
                       vscode.window.showErrorMessage(
                         `Error updating ${selected.label}: ${result.error}`
                       );
+                      Logger.hide();
                     }
-                    Logger.hide();
                   });
                 }
               );
@@ -754,8 +755,8 @@ export function activate(context: vscode.ExtensionContext) {
   let pipUninstallDisposer = vscode.commands.registerCommand(
     "python2go.pipUninstall",
     () => {
-      installedPipPackages().then((pkgs) => {
-        vscode.window
+      return installedPipPackages().then((pkgs) => {
+        return vscode.window
           .showQuickPick(
             pkgs.map((pkg) => ({
               label: pkg.package,
