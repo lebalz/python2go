@@ -594,11 +594,11 @@ export function activate(context: vscode.ExtensionContext) {
           return pip(command).then((result) => {
             if (result.success) {
               progress.report({ message: "Success", increment: 100 });
-              return vscode.window.showInformationMessage(
+              vscode.window.showInformationMessage(
                 `[Python2go]: Successfully executed "pip ${command}"`
               );
             } else {
-              return vscode.window.showErrorMessage(`pip ${command}: ${result.error}`);
+              vscode.window.showErrorMessage(`pip ${command}: ${result.error}`);
             }
           });
         }
@@ -690,12 +690,12 @@ export function activate(context: vscode.ExtensionContext) {
                       const updatedPkg = pkgs.find(
                         (pkg) => pkg.package === pipPkg
                       );
-                      return vscode.window.showInformationMessage(
+                      Logger.hide();
+                      vscode.window.showInformationMessage(
                         `Installed pip package ${pipPkg} V${updatedPkg?.version}`
                       );
                     });
                   }
-                  Logger.hide();
                 });
               }
             );
