@@ -386,6 +386,17 @@ export function activate(context: vscode.ExtensionContext) {
   Logger.configure("python2go", "Python2Go");
   Logger.log("Welcome to Python2Go");
   const configuration = vscode.workspace.getConfiguration();
+
+  vscode.commands.executeCommand(
+    "setContext",
+    "python2go.showGreenPlayIcon",
+    configuration.get("python2go.showGreenPlayIcon")
+  );
+  vscode.commands.executeCommand(
+    "setContext",
+    "python2go.showYellowPlayIcon",
+    configuration.get("python2go.showYellowPlayIcon")
+  );
   if (configuration.get("python2go.python_version")) {
     configuration.update(
       Py2GoSettings.PythonVersion,
@@ -829,6 +840,31 @@ export function activate(context: vscode.ExtensionContext) {
       });
     }
   );
+
+  let runDebugDisposer = vscode.commands.registerCommand(
+    "python2go.run_debug",
+    () => {
+      const launchConfig = vscode.workspace
+        .getConfiguration()
+        .get("python2go.runDebugConfiguration") as any;
+      launchConfig["stopOnEntry"] = false;
+      return vscode.debug.startDebugging(undefined, launchConfig);
+    }
+  );
+
+  let runDebugAndStopDisposer = vscode.commands.registerCommand(
+    "python2go.run_and_stop",
+    () => {
+      const launchConfig = vscode.workspace
+        .getConfiguration()
+        .get("python2go.runDebugConfiguration") as any;
+      launchConfig["stopOnEntry"] = true;
+      return vscode.debug.startDebugging(undefined, launchConfig);
+    }
+  );
+
+  context.subscriptions.push(runDebugDisposer);
+  context.subscriptions.push(runDebugAndStopDisposer);
 
   context.subscriptions.push(installDisposer);
   context.subscriptions.push(configureDisposer);

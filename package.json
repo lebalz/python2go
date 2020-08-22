@@ -3,7 +3,7 @@
 	"displayName": "python2go",
 	"publisher": "lebalz",
 	"description": "install and configure python to start straight away",
-	"version": "0.0.31",
+	"version": "0.0.32",
 	"engines": {
 		"vscode": "^1.46.0"
 	},
@@ -84,6 +84,24 @@
 				"command": "python2go.addPipUserPathToEnv",
 				"category": "Python2Go",
 				"title": "Add the local --user path to the env (win only)"
+			},
+			{
+				"command": "python2go.run_debug",
+				"category": "Python2Go",
+				"title": "Execute Program",
+				"icon": {
+					"light": "resources/light/debug-file.svg",
+					"dark": "resources/dark/debug-file.svg"
+				}
+			},
+			{
+				"command": "python2go.run_and_stop",
+				"category": "Python2Go",
+				"title": "Execute Program and wait at the begin",
+				"icon": {
+					"light": "resources/light/debug-file-and-stop.svg",
+					"dark": "resources/dark/debug-file-and-stop.svg"
+				}
 			}
 		],
 		"menus": {
@@ -95,6 +113,20 @@
 				{
 					"command": "python2go.uninstall",
 					"when": "python2go:isPythonInstalled"
+				}
+			],
+			"editor/title": [
+				{
+					"command": "python2go.run_debug",
+					"title": "Execute program",
+					"group": "navigation",
+					"when": "resourceLangId == python && python2go.showGreenPlayIcon"
+				},
+				{
+					"command": "python2go.run_and_stop",
+					"title": "Execute program and wait at the begin",
+					"group": "navigation",
+					"when": "resourceLangId == python && python2go.showYellowPlayIcon"
 				}
 			]
 		},
@@ -110,6 +142,30 @@
 					"type": "string",
 					"default": "3.8.3",
 					"description": "The python version which will be installed"
+				},
+				"python2go.runDebugConfiguration": {
+					"type": "object",
+					"default": {
+						"name": "Python: Current File",
+						"type": "python",
+						"request": "launch",
+						"program": "${file}",
+						"console": "integratedTerminal",
+						"internalConsoleOptions": "neverOpen",
+						"justMyCode": true,
+						"showReturnValue": true
+					},
+					"description": "Launch configuration to start debugging"
+				},
+				"python2go.showGreenPlayIcon": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show the green run debug icon"
+				},
+				"python2go.showYellowPlayIcon": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show the yellow run and wait debug icon"
 				}
 			}
 		}
