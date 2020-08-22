@@ -104,7 +104,7 @@
 				"python2go.skipInstallationCheck": {
 					"type": "boolean",
 					"default": false,
-					"description": "Wheter to check if python is installed (using choco on windows, pyenv on osx)."
+					"description": "Wheter to check if python is installed and on path (using pyenv on osx)."
 				},
 				"python2go.pythonVersion": {
 					"type": "string",
