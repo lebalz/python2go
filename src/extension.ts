@@ -17,8 +17,8 @@ import {
 } from "./package-manager/src/packageManager";
 
 export enum Py2GoSettings {
-  SkipInstallationCheck = "python2go.skip_installation_check",
-  PythonVersion = "python2go.python_version",
+  SkipInstallationCheck = "python2go.skipInstallationCheck",
+  PythonVersion = "python2go.pythonVersion",
 }
 
 const CHOCO_LOG_LOCATION_REGEXP = /Installed to: '(?<location>.*)'/i;
@@ -386,6 +386,13 @@ export function activate(context: vscode.ExtensionContext) {
   Logger.configure("python2go", "Python2Go");
   Logger.log("Welcome to Python2Go");
   const configuration = vscode.workspace.getConfiguration();
+  if (configuration.get("python2go.python_version")) {
+    configuration.update(
+      Py2GoSettings.PythonVersion,
+      configuration.get("python2go.python_version")
+    );
+    configuration.update("python2go.python_version", undefined);
+  }
   isPythonInstalled().then((pyVersion) => {
     if (!pyVersion) {
       if (!configuration.get(Py2GoSettings.SkipInstallationCheck, false)) {

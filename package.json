@@ -3,7 +3,7 @@
 	"displayName": "python2go",
 	"publisher": "lebalz",
 	"description": "install and configure python to start straight away",
-	"version": "0.0.30",
+	"version": "0.0.31",
 	"engines": {
 		"vscode": "^1.46.0"
 	},
@@ -101,17 +101,13 @@
 		"configuration": {
 			"title": "Python2Go",
 			"properties": {
-				"python2go.skip_installation_check": {
-					"type": [
-						"boolean"
-					],
+				"python2go.skipInstallationCheck": {
+					"type": "boolean",
 					"default": false,
 					"description": "Wheter to check if python is installed (using choco on windows, pyenv on osx)."
 				},
-				"python2go.python_version": {
-					"type": [
-						"string"
-					],
+				"python2go.pythonVersion": {
+					"type": "string",
 					"default": "3.8.3",
 					"description": "The python version which will be installed"
 				}
