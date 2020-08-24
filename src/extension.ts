@@ -400,9 +400,10 @@ export function activate(context: vscode.ExtensionContext) {
   if (configuration.get("python2go.python_version")) {
     configuration.update(
       Py2GoSettings.PythonVersion,
-      configuration.get("python2go.python_version")
+      configuration.get("python2go.python_version"),
+      vscode.ConfigurationTarget.Global
     );
-    configuration.update("python2go.python_version", undefined);
+    configuration.update("python2go.python_version", undefined, vscode.ConfigurationTarget.Global);
   }
   isPythonInstalled().then((pyVersion) => {
     if (!pyVersion) {
@@ -710,8 +711,13 @@ export function activate(context: vscode.ExtensionContext) {
                       );
                       Logger.hide();
                       vscode.window.showInformationMessage(
-                        `Installed pip package ${pipPkg} V${updatedPkg?.version}`
-                      );
+                        `Installed pip package ${pipPkg} V${updatedPkg?.version}`,
+                        'Reload'
+                      ).then((selection) => {
+                        if (selection === "Reload") {
+                          return vscode.commands.executeCommand("workbench.action.reloadWindow");
+                        }
+                      });
                     });
                   }
                 });
@@ -751,8 +757,13 @@ export function activate(context: vscode.ExtensionContext) {
                           (pkg) => pkg.package === selected.label
                         );
                         vscode.window.showInformationMessage(
-                          `Updated pip package ${selected.label} from ${selected.description} to V${updatedPkg?.version}`
-                        );
+                          `Updated pip package ${selected.label} from ${selected.description} to V${updatedPkg?.version}`,
+                          'Reload'
+                        ).then((selection) => {
+                          if (selection === "Reload") {
+                            return vscode.commands.executeCommand("workbench.action.reloadWindow");
+                          }
+                        });
                         Logger.hide();
                       });
                     } else {
@@ -795,8 +806,13 @@ export function activate(context: vscode.ExtensionContext) {
                   return pip(cmd).then((result) => {
                     if (result.success) {
                       vscode.window.showInformationMessage(
-                        `Uninstalled pip package ${selected.label}`
-                      );
+                        `Uninstalled pip package ${selected.label}`,
+                        'Reload'
+                      ).then((selection) => {
+                        if (selection === "Reload") {
+                          return vscode.commands.executeCommand("workbench.action.reloadWindow");
+                        }
+                      });
                     } else {
                       vscode.window.showErrorMessage(
                         `Error uninstalling ${selected.label}: ${result.error}`
