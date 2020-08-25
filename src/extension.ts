@@ -21,7 +21,7 @@ export enum Py2GoSettings {
   PythonVersion = "python2go.pythonVersion",
 }
 
-const CHOCO_LOG_LOCATION_REGEXP = /Installed to: '(?<location>.*)'/i;
+const PYTHON2GO_DEBUG_NAME = "Python2Go: Current File";
 
 interface PyVersion {
   major: number;
@@ -128,6 +128,15 @@ function winInstallationLocation(): Thenable<TaskMessage> {
       return SuccessMsg(pythonLocation);
     });
   });
+}
+
+function debugConfiguration(stopOnEntry: boolean) {
+  const launchConfig = vscode.workspace
+    .getConfiguration()
+    .get("python2go.runDebugConfiguration") as any;
+  launchConfig["stopOnEntry"] = stopOnEntry;
+  launchConfig["name"] = PYTHON2GO_DEBUG_NAME;
+  return launchConfig;
 }
 
 function setContext(pyVersion: PyVersion | false) {
@@ -380,6 +389,34 @@ function installedPipPackages(): Thenable<
   });
 }
 
+function configurePlayIcons() {
+  const configuration = vscode.workspace.getConfiguration();
+  vscode.commands.executeCommand(
+    "setContext",
+    "python2go.showYellowPlayIcon",
+    configuration.get("python2go.showYellowPlayIcon")
+  );
+  vscode.commands.executeCommand(
+    "setContext",
+    "python2go.showGreenPlayIcon",
+    configuration.get("python2go.showGreenPlayIcon")
+  );
+}
+
+function disablePlayIcons() {
+  const configuration = vscode.workspace.getConfiguration();
+  vscode.commands.executeCommand(
+    "setContext",
+    "python2go.showYellowPlayIcon",
+    false
+  );
+  vscode.commands.executeCommand(
+    "setContext",
+    "python2go.showGreenPlayIcon",
+    false
+  );
+}
+
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
@@ -387,24 +424,37 @@ export function activate(context: vscode.ExtensionContext) {
   Logger.log("Welcome to Python2Go");
   const configuration = vscode.workspace.getConfiguration();
 
-  vscode.commands.executeCommand(
-    "setContext",
-    "python2go.showGreenPlayIcon",
-    configuration.get("python2go.showGreenPlayIcon")
-  );
-  vscode.commands.executeCommand(
-    "setContext",
-    "python2go.showYellowPlayIcon",
-    configuration.get("python2go.showYellowPlayIcon")
-  );
+  configurePlayIcons();
   if (configuration.get("python2go.python_version")) {
     configuration.update(
       Py2GoSettings.PythonVersion,
       configuration.get("python2go.python_version"),
       vscode.ConfigurationTarget.Global
     );
-    configuration.update("python2go.python_version", undefined, vscode.ConfigurationTarget.Global);
+    configuration.update(
+      "python2go.python_version",
+      undefined,
+      vscode.ConfigurationTarget.Global
+    );
   }
+
+  vscode.workspace.onDidChangeConfiguration((e) => {
+    if (e.affectsConfiguration("python2go.showYellowPlayIcon")) {
+      vscode.commands.executeCommand(
+        "setContext",
+        "python2go.showYellowPlayIcon",
+        configuration.get("python2go.showYellowPlayIcon")
+      );
+    }
+    if (e.affectsConfiguration("python2go.showGreenPlayIcon")) {
+      vscode.commands.executeCommand(
+        "setContext",
+        "python2go.showGreenPlayIcon",
+        configuration.get("python2go.showGreenPlayIcon")
+      );
+    }
+  });
+
   isPythonInstalled().then((pyVersion) => {
     if (!pyVersion) {
       if (!configuration.get(Py2GoSettings.SkipInstallationCheck, false)) {
@@ -710,14 +760,18 @@ export function activate(context: vscode.ExtensionContext) {
                         (pkg) => pkg.package === pipPkg
                       );
                       Logger.hide();
-                      vscode.window.showInformationMessage(
-                        `Installed pip package ${pipPkg} V${updatedPkg?.version}`,
-                        'Reload'
-                      ).then((selection) => {
-                        if (selection === "Reload") {
-                          return vscode.commands.executeCommand("workbench.action.reloadWindow");
-                        }
-                      });
+                      vscode.window
+                        .showInformationMessage(
+                          `Installed pip package ${pipPkg} V${updatedPkg?.version}`,
+                          "Reload"
+                        )
+                        .then((selection) => {
+                          if (selection === "Reload") {
+                            return vscode.commands.executeCommand(
+                              "workbench.action.reloadWindow"
+                            );
+                          }
+                        });
                     });
                   }
                 });
@@ -756,14 +810,18 @@ export function activate(context: vscode.ExtensionContext) {
                         const updatedPkg = pkgs.find(
                           (pkg) => pkg.package === selected.label
                         );
-                        vscode.window.showInformationMessage(
-                          `Updated pip package ${selected.label} from ${selected.description} to V${updatedPkg?.version}`,
-                          'Reload'
-                        ).then((selection) => {
-                          if (selection === "Reload") {
-                            return vscode.commands.executeCommand("workbench.action.reloadWindow");
-                          }
-                        });
+                        vscode.window
+                          .showInformationMessage(
+                            `Updated pip package ${selected.label} from ${selected.description} to V${updatedPkg?.version}`,
+                            "Reload"
+                          )
+                          .then((selection) => {
+                            if (selection === "Reload") {
+                              return vscode.commands.executeCommand(
+                                "workbench.action.reloadWindow"
+                              );
+                            }
+                          });
                         Logger.hide();
                       });
                     } else {
@@ -794,7 +852,6 @@ export function activate(context: vscode.ExtensionContext) {
           )
           .then((selected) => {
             if (selected) {
-              const target = process.platform === "win32" ? "--user" : "";
               const cmd = `uninstall -y ${selected.label}`;
               Logger.show();
               return vscode.window.withProgress(
@@ -805,14 +862,18 @@ export function activate(context: vscode.ExtensionContext) {
                 (progress) => {
                   return pip(cmd).then((result) => {
                     if (result.success) {
-                      vscode.window.showInformationMessage(
-                        `Uninstalled pip package ${selected.label}`,
-                        'Reload'
-                      ).then((selection) => {
-                        if (selection === "Reload") {
-                          return vscode.commands.executeCommand("workbench.action.reloadWindow");
-                        }
-                      });
+                      vscode.window
+                        .showInformationMessage(
+                          `Uninstalled pip package ${selected.label}`,
+                          "Reload"
+                        )
+                        .then((selection) => {
+                          if (selection === "Reload") {
+                            return vscode.commands.executeCommand(
+                              "workbench.action.reloadWindow"
+                            );
+                          }
+                        });
                     } else {
                       vscode.window.showErrorMessage(
                         `Error uninstalling ${selected.label}: ${result.error}`
@@ -857,25 +918,36 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  vscode.debug.onDidStartDebugSession((e) => {
+    if (e.type === "python") {
+      disablePlayIcons();
+    }
+  });
+
+  vscode.debug.onDidTerminateDebugSession((e: vscode.DebugSession) => {
+    if (e.type === "python") {
+      configurePlayIcons();
+    }
+    if (e.type !== "python" || e.name !== PYTHON2GO_DEBUG_NAME) {
+      return;
+    }
+    const config = vscode.workspace.getConfiguration();
+    if (config.get("python2go.showExplorerViewOnDebugEnd")) {
+      vscode.commands.executeCommand("workbench.view.explorer");
+    }
+  });
+
   let runDebugDisposer = vscode.commands.registerCommand(
     "python2go.run_debug",
     () => {
-      const launchConfig = vscode.workspace
-        .getConfiguration()
-        .get("python2go.runDebugConfiguration") as any;
-      launchConfig["stopOnEntry"] = false;
-      return vscode.debug.startDebugging(undefined, launchConfig);
+      return vscode.debug.startDebugging(undefined, debugConfiguration(false));
     }
   );
 
   let runDebugAndStopDisposer = vscode.commands.registerCommand(
     "python2go.run_and_stop",
     () => {
-      const launchConfig = vscode.workspace
-        .getConfiguration()
-        .get("python2go.runDebugConfiguration") as any;
-      launchConfig["stopOnEntry"] = true;
-      return vscode.debug.startDebugging(undefined, launchConfig);
+      return vscode.debug.startDebugging(undefined, debugConfiguration(true));
     }
   );
 
