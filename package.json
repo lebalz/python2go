@@ -102,6 +102,15 @@
 					"light": "resources/light/debug-file-and-stop.svg",
 					"dark": "resources/dark/debug-file-and-stop.svg"
 				}
+			},
+			{
+				"command": "python2go.show_ipython",
+				"category": "Python2Go",
+				"title": "Show an interactive python terminal",
+				"icon": {
+					"light": "resources/light/terminal.svg",
+					"dark": "resources/dark/terminal.svg"
+				}
 			}
 		],
 		"menus": {
@@ -113,6 +122,10 @@
 				{
 					"command": "python2go.uninstall",
 					"when": "python2go:isPythonInstalled"
+				},
+				{
+					"command": "python2go.show_ipython",
+					"when": "python2go:isPythonInstalled"
 				}
 			],
 			"editor/title": [
@@ -120,13 +133,19 @@
 					"command": "python2go.run_debug",
 					"title": "Execute program",
 					"group": "navigation",
-					"when": "resourceLangId == python && python2go.showGreenPlayIcon"
+					"when": "python2go:isPythonInstalled && resourceLangId == python && python2go.showGreenPlayIcon"
 				},
 				{
 					"command": "python2go.run_and_stop",
 					"title": "Execute program and wait at the begin",
 					"group": "navigation",
-					"when": "resourceLangId == python && python2go.showYellowPlayIcon"
+					"when": "python2go:isPythonInstalled && resourceLangId == python && python2go.showYellowPlayIcon"
+				},
+				{
+					"command": "python2go.show_ipython",
+					"title": "Show an interactive python terminal",
+					"group": "navigation",
+					"when": "python2go:isPythonInstalled && resourceLangId == python && python2go.showIpythonIcon"
 				}
 			]
 		},
@@ -170,6 +189,11 @@
 					"type": "boolean",
 					"default": true,
 					"description": "Show the yellow run and wait debug icon"
+				},
+				"python2go.showIpythonIcon": {
+					"type": "boolean",
+					"default": true,
+					"description": "Show the ipython terminal icon"
 				}
 			}
 		}

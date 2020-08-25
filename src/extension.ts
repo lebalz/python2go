@@ -22,6 +22,7 @@ export enum Py2GoSettings {
 }
 
 const PYTHON2GO_DEBUG_NAME = "Python2Go: Current File";
+const PYTHON2GO_TERMINAL_NAME = "Python2Go: IPython";
 
 interface PyVersion {
   major: number;
@@ -401,10 +402,14 @@ function configurePlayIcons() {
     "python2go.showGreenPlayIcon",
     configuration.get("python2go.showGreenPlayIcon")
   );
+  vscode.commands.executeCommand(
+    "setContext",
+    "python2go.showIpythonIcon",
+    configuration.get("python2go.showIpythonIcon")
+  );
 }
 
 function disablePlayIcons() {
-  const configuration = vscode.workspace.getConfiguration();
   vscode.commands.executeCommand(
     "setContext",
     "python2go.showYellowPlayIcon",
@@ -439,19 +444,12 @@ export function activate(context: vscode.ExtensionContext) {
   }
 
   vscode.workspace.onDidChangeConfiguration((e) => {
-    if (e.affectsConfiguration("python2go.showYellowPlayIcon")) {
-      vscode.commands.executeCommand(
-        "setContext",
-        "python2go.showYellowPlayIcon",
-        configuration.get("python2go.showYellowPlayIcon")
-      );
-    }
-    if (e.affectsConfiguration("python2go.showGreenPlayIcon")) {
-      vscode.commands.executeCommand(
-        "setContext",
-        "python2go.showGreenPlayIcon",
-        configuration.get("python2go.showGreenPlayIcon")
-      );
+    if (
+      e.affectsConfiguration("python2go.showYellowPlayIcon") ||
+      e.affectsConfiguration("python2go.showGreenPlayIcon") ||
+      e.affectsConfiguration("python2go.showIpythonIcon")
+    ) {
+      configurePlayIcons();
     }
   });
 
@@ -951,8 +949,36 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  let showIpythonTerminal = vscode.commands.registerCommand(
+    "python2go.show_ipython",
+    () => {
+      const ipyTerminal = vscode.window.terminals.find(
+        (t) => t.name === PYTHON2GO_TERMINAL_NAME
+      );
+      const editor = vscode.window.activeTextEditor;
+      const text = editor?.document.getText(editor.selection).trim();
+      if (ipyTerminal) {
+        ipyTerminal.show();
+        if (text) {
+          ipyTerminal.sendText(text, true);
+        }
+        return;
+      }
+      const terminal = vscode.window.createTerminal({
+        name: PYTHON2GO_TERMINAL_NAME,
+      });
+      setTimeout(() => {
+        terminal.sendText("ipython", true);
+        if (text) {
+          terminal.sendText(text, true);
+        }
+      }, 200);
+    }
+  );
+
   context.subscriptions.push(runDebugDisposer);
   context.subscriptions.push(runDebugAndStopDisposer);
+  context.subscriptions.push(showIpythonTerminal);
 
   context.subscriptions.push(installDisposer);
   context.subscriptions.push(configureDisposer);
