@@ -155,7 +155,11 @@ function setContext(pyVersion: PyVersion | false) {
 
 function isPythonInstalled(): Thenable<false | PyVersion> {
   try {
-    return shellExec("python --version").then((result) => {
+    const checkerCmd =
+      process.platform === "win32"
+        ? "python --version"
+        : "pyenv --version && python --version";
+    return shellExec(checkerCmd).then((result) => {
       if (!result.success) {
         setContext(false);
         return false;
