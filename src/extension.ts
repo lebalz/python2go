@@ -971,6 +971,7 @@ export function activate(context: vscode.ExtensionContext) {
       const terminal = vscode.window.createTerminal({
         name: PYTHON2GO_TERMINAL_NAME,
       });
+      terminal.show();
       setTimeout(() => {
         terminal.sendText("ipython", true);
         if (text) {
