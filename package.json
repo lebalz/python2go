@@ -3,7 +3,7 @@
 	"displayName": "python2go",
 	"publisher": "lebalz",
 	"description": "install and configure python to start straight away",
-	"version": "0.0.36",
+	"version": "0.0.37",
 	"engines": {
 		"vscode": "^1.46.0"
 	},
@@ -145,7 +145,7 @@
 					"command": "python2go.show_ipython",
 					"title": "Show an interactive python terminal",
 					"group": "navigation",
-					"when": "python2go:isPythonInstalled && resourceLangId == python && python2go.showIpythonIcon"
+					"when": "python2go:isPythonInstalled && python2go.showIpythonIcon"
 				}
 			]
 		},
