@@ -17,6 +17,7 @@ import {
 } from "./package-manager/src/packageManager";
 import { platform } from "process";
 import { resolve } from "path";
+import { installPipPackagesFromGist, clearCached } from "./pipFromGist";
 
 export enum Py2GoSettings {
   SkipInstallationCheck = "python2go.skipInstallationCheck",
@@ -195,7 +196,7 @@ function installedPythonVersion() {
   }
 }
 
-function isPythonInstalled(): boolean {
+export function isPythonInstalled(): boolean {
   const version = installedPythonVersion();
   if (!version) {
     return false;
@@ -474,6 +475,10 @@ export function activate(context: vscode.ExtensionContext) {
     ) {
       configurePlayIcons();
     }
+    if (e.affectsConfiguration("python2go.gistPipUrl")) {
+      clearCached();
+      installPipPackagesFromGist();
+    }
   });
   const pyVersion = installedPythonVersion();
   if (!pyVersion) {
@@ -562,6 +567,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
       });
     }
+    installPipPackagesFromGist();
   }
   // The command has been defined in the package.json file
   // Now provide the implementation of the command with registerCommand

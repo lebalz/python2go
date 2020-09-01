@@ -3,7 +3,7 @@
 	"displayName": "python2go",
 	"publisher": "lebalz",
 	"description": "install and configure python to start straight away",
-	"version": "0.0.41",
+	"version": "0.0.42",
 	"engines": {
 		"vscode": "^1.46.0"
 	},
@@ -194,6 +194,11 @@
 					"type": "boolean",
 					"default": true,
 					"description": "Show the ipython terminal icon"
+				},
+				"python2go.gistPipUrl": {
+					"type": "string",
+					"default": "",
+					"description": "Specify a gist url containing the pip packages you want to be installed. See https://gist.github.com/lebalz/22b59234e928119f8a72ff2d1ae32c08 for an example"
 				}
 			}
 		}
@@ -221,6 +226,7 @@
 	},
 	"dependencies": {
 		"@types/node-powershell": "^3.1.1",
+		"axios": "^0.20.0",
 		"node-powershell": "^4.0.0"
 	}
 }
