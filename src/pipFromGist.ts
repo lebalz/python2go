@@ -34,10 +34,14 @@ function pipPackagesFromGist(): Promise<ToInstallPipPackage[]> {
   if (pipPackagesCached.length > 0) {
     return new Promise((resolve) => resolve(pipPackagesCached));
   }
+  Logger.log(`Start downloading pip packages from ${gistUrl}`);
   return axios
     .get(`${gistUrl}/raw`, { responseType: "json" })
     .then((data) => {
       pipPackagesCached = data.data;
+      Logger.log(
+        `Gist content ${JSON.stringify(pipPackagesCached, undefined, 2)}`
+      );
       return pipPackagesCached;
     })
     .catch((error) => {

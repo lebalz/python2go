@@ -398,9 +398,7 @@ function installedPipPackages(): Thenable<
   return pip("list").then((result) => {
     if (result.success) {
       const pkgs = result.msg.split(/\r?\n/).slice(2);
-      Logger.log("Installed pip packages:");
-      return pkgs.map((pkg) => {
-        Logger.log(pkg);
+      const pipPkgs = pkgs.map((pkg) => {
         // \S --> any non whitespace character
         // \s --> any whitespace character
         const match = pkg.match(/(?<pkg>\S+)\s+(?<version>\S+)/);
@@ -409,6 +407,7 @@ function installedPipPackages(): Thenable<
           version: match?.groups?.version ?? "",
         };
       });
+      return pipPkgs;
     }
     return [];
   });
