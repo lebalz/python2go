@@ -100,7 +100,7 @@ function pythonVersion(): string {
   return conf.get(Py2GoSettings.PythonVersion, "3.8.3");
 }
 
-function osxInstallationLocation(): string {
+function unixInstallationLocation(): string {
   const homeFolder = execSync("echo $HOME").toString().trim();
   return `${homeFolder}/.pyenv/versions/${pythonVersion()}/bin/python`;
 }
@@ -216,14 +216,12 @@ function isPyEnvInstalled(): Thenable<boolean> {
 }
 
 function installationLocation(): Thenable<TaskMessage> {
-  if (process.platform === "darwin") {
-    return new Promise((resolve) =>
-      resolve(SuccessMsg(osxInstallationLocation()))
-    );
-  } else if (process.platform === "win32") {
+  if (process.platform === "win32") {
     return winInstallationLocation();
   }
-  return new Promise((resolve) => resolve(ErrorMsg("Location not found")));
+  return new Promise((resolve) =>
+    resolve(SuccessMsg(unixInstallationLocation()))
+  );
 }
 
 function installPythonWithPyEnv(
@@ -238,7 +236,7 @@ function installPythonWithPyEnv(
           `Warnings occured during installation:\n${result.error}`
         );
       }
-      return SuccessMsg(osxInstallationLocation());
+      return SuccessMsg(unixInstallationLocation());
     }
     vscode.window.showErrorMessage(
       `Could not install install python.\n${result.error ?? result.msg}`
@@ -257,7 +255,7 @@ function installPython(
   progress: Progress
 ): Thenable<TaskMessage> {
   return isPythonInstalled().then((isInstalled) => {
-    if (isInstalled && process.platform === "darwin") {
+    if (isInstalled && process.platform !== "win32") {
       return installationLocation();
     }
     return vscodeInstallPackageManager(context, progress, 30).then(
@@ -326,7 +324,7 @@ function configure(location?: string, showErrorMsg: boolean = true) {
       return;
     }
 
-    if (process.platform === "darwin") {
+    if (process.platform !== "win32") {
       execSync(`pyenv global ${pythonVersion()}`);
     }
     const configuration = vscode.workspace.getConfiguration();
@@ -344,7 +342,7 @@ function configure(location?: string, showErrorMsg: boolean = true) {
         );
       });
 
-    if (process.platform === "darwin") {
+    if (process.platform !== "win32") {
       configuration.update(
         "python.venvPath",
         "~/.pyenv",
