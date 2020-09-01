@@ -18,6 +18,9 @@ export function clearCached() {
   pipPackagesCached.splice(0);
 }
 
+const LE = "<=";
+const GE = ">=";
+
 /**
  *
  * @param gistUrl url to the gist (not the raw), e.g https://gist.github.com/lebalz/8224837c3e4238288bbf2bda5af17fdf
@@ -39,6 +42,9 @@ function pipPackagesFromGist(): Promise<ToInstallPipPackage[]> {
     })
     .catch((error) => {
       Logger.log(error);
+      vscode.window.showErrorMessage(
+        `Gist Content could not be downloaded from ${gistUrl}: ${error}`
+      );
       return [] as ToInstallPipPackage[];
     });
 }
@@ -47,11 +53,11 @@ function wrongVersion(installed: PipPackage, requested: ToInstallPipPackage) {
   if (!requested.version) {
     return false;
   }
-  if (requested.version.startsWith(">=")) {
+  if (requested.version.startsWith(GE)) {
     // it's the wrong version, when the installed version is lower than the requested.
     return requested.version!.slice(2) > installed.version;
   }
-  if (requested.version.startsWith("<=")) {
+  if (requested.version.startsWith(LE)) {
     // it's the wrong version, when the installed version is higher than the requested.
     return requested.version!.slice(2) < installed.version;
   }
@@ -132,9 +138,7 @@ export function installPipPackagesFromGist(): Thenable<boolean> {
           const target = process.platform === "win32" ? "--user" : "";
           const toInstallPkgs = toInstall.map((pkg) =>
             pkg.version
-              ? `${pkg.package}==${pkg.version
-                  .replace("<", "")
-                  .replace(">=", "")}`
+              ? `${pkg.package}==${pkg.version.replace(LE, "").replace(GE, "")}`
               : pkg.package
           );
           return vscode.commands
