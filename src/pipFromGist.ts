@@ -51,9 +51,9 @@ function wrongVersion(installed: PipPackage, requested: ToInstallPipPackage) {
     // it's the wrong version, when the installed version is lower than the requested.
     return requested.version!.slice(2) > installed.version;
   }
-  if (requested.version.startsWith("<")) {
-    // it's the wrong version, when the installed version is higher or equal than the requested.
-    return requested.version!.slice(1) <= installed.version;
+  if (requested.version.startsWith("<=")) {
+    // it's the wrong version, when the installed version is higher than the requested.
+    return requested.version!.slice(2) < installed.version;
   }
   return requested.version !== installed.version;
 }
