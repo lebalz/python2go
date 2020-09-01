@@ -15,6 +15,8 @@ import {
   vscodeInstallPackageManager,
   inOsShell,
 } from "./package-manager/src/packageManager";
+import { platform } from "process";
+import { resolve } from "path";
 
 export enum Py2GoSettings {
   SkipInstallationCheck = "python2go.skipInstallationCheck",
@@ -102,32 +104,33 @@ function pythonVersion(): string {
 
 function unixInstallationLocation(): string {
   const homeFolder = execSync("echo $HOME").toString().trim();
-  return `${homeFolder}/.pyenv/versions/${pythonVersion()}/bin/python`;
+  const version = installedPythonVersion();
+  return `${homeFolder}/.pyenv/versions/${
+    version ? version.version : pythonVersion()
+  }/bin/python`;
 }
 
 function winInstallationLocation(): Thenable<TaskMessage> {
-  return isPythonInstalled().then((version) => {
-    if (!version) {
-      return ErrorMsg("no installation found");
+  const version = installedPythonVersion();
+  if (!version) {
+    return new Promise((resolve) => resolve(ErrorMsg("no installation found")));
+  }
+  return inOsShell(
+    "[System.Environment]::GetEnvironmentVariable('Path','User')",
+    { disableChocoCheck: true }
+  ).then((result) => {
+    if (result.error || !result.msg) {
+      return ErrorMsg("could not read environment");
     }
-
-    return inOsShell(
-      "[System.Environment]::GetEnvironmentVariable('Path','User')",
-      { disableChocoCheck: true }
-    ).then((result) => {
-      if (result.error || !result.msg) {
-        return ErrorMsg("could not read environment");
-      }
-      const usrPath = result.msg;
-      const pyFolder = `Python\\Python${version.major}${version.major}\\`;
-      const pythonLocation = usrPath
-        .split(";")
-        .find((p) => p.trim().endsWith(pyFolder));
-      if (!pythonLocation) {
-        return ErrorMsg("no location found");
-      }
-      return SuccessMsg(pythonLocation);
-    });
+    const usrPath = result.msg;
+    const pyFolder = `Python\\Python${version.major}${version.major}\\`;
+    const pythonLocation = usrPath
+      .split(";")
+      .find((p) => p.trim().endsWith(pyFolder));
+    if (!pythonLocation) {
+      return ErrorMsg("no location found");
+    }
+    return SuccessMsg(pythonLocation);
   });
 }
 
@@ -153,42 +156,53 @@ function setContext(pyVersion: PyVersion | false) {
   }
 }
 
-function isPythonInstalled(): Thenable<false | PyVersion> {
+function installedPythonVersion() {
   try {
-    const checkerCmd =
-      process.platform === "win32"
-        ? "python --version"
-        : "pyenv --version && python --version";
-    return shellExec(checkerCmd).then((result) => {
-      if (!result.success) {
-        setContext(false);
-        return false;
-      }
-      const res = result.msg.match(
-        /Python (?<major>\d)\.(?<minor>\d)\.(?<release>\d)/
-      );
-      if (
-        !res ||
-        res.groups?.major === undefined ||
-        res.groups?.minor === undefined
-      ) {
-        setContext(false);
+    let checkerCmd = "python --version";
+    if (process.platform === "darwin") {
+      checkerCmd = "pyenv --version && python --version";
+    }
+    const result = execSync(checkerCmd).toString().trim();
+    if (!result) {
+      return;
+    }
+    const res = result.match(
+      /Python (?<major>\d)\.(?<minor>\d)\.(?<release>\d)/
+    );
+    if (
+      !res ||
+      res.groups?.major === undefined ||
+      res.groups?.minor === undefined
+    ) {
+      setContext(false);
+      return;
+    }
+    const version = {
+      major: Number.parseInt(res.groups.major, 10),
+      minor: Number.parseInt(res.groups.minor, 10),
+      release: Number.parseInt(res.groups.release, 10),
+      version: `${res.groups.major}.${res.groups.minor}.${res.groups.release}`,
+    };
+    setContext(version);
 
-        return false;
-      }
-      const version = {
-        major: Number.parseInt(res.groups.major, 10),
-        minor: Number.parseInt(res.groups.minor, 10),
-        release: Number.parseInt(res.groups.release, 10),
-        version: `${res.groups.major}.${res.groups.minor}.${res.groups.release}`,
-      };
-      setContext(version);
-
-      return version;
-    });
+    return version;
   } catch (exception) {
-    return new Promise((resolve) => resolve(false));
+    return;
   }
+}
+
+function isPythonInstalled(): boolean {
+  const version = installedPythonVersion();
+  if (!version) {
+    return false;
+  }
+  if (version.major > 3) {
+    return true;
+  }
+  if (version.major === 3 && version.minor >= 6) {
+    return true;
+  }
+  return false;
 }
 
 function isPyEnvInstalled(): Thenable<boolean> {
@@ -254,29 +268,25 @@ function installPython(
   context: vscode.ExtensionContext,
   progress: Progress
 ): Thenable<TaskMessage> {
-  return isPythonInstalled().then((isInstalled) => {
-    if (isInstalled && process.platform !== "win32") {
-      return installationLocation();
+  if (isPythonInstalled() && process.platform !== "win32") {
+    return installationLocation();
+  }
+  return vscodeInstallPackageManager(context, progress, 30).then((success) => {
+    if (!success) {
+      return ErrorMsg("Could not install Package Manager");
     }
-    return vscodeInstallPackageManager(context, progress, 30).then(
-      (success) => {
-        if (!success) {
-          return ErrorMsg("Could not install Package Manager");
+    return vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: `Python2go]: Installing Python ${pythonVersion()}`,
+      },
+      () => {
+        progress.report({ message: "Install Python", increment: 35 });
+        if (process.platform === "darwin") {
+          return installPythonWithPyEnv(context);
         }
-        return vscode.window.withProgress(
-          {
-            location: vscode.ProgressLocation.Notification,
-            title: `Python2go]: Installing Python ${pythonVersion()}`,
-          },
-          () => {
-            progress.report({ message: "Install Python", increment: 35 });
-            if (process.platform === "darwin") {
-              return installPythonWithPyEnv(context);
-            }
-            return new Promise((resolve) =>
-              resolve(ErrorMsg(`Plattform '${process.platform}' not supported`))
-            );
-          }
+        return new Promise((resolve) =>
+          resolve(ErrorMsg(`Plattform '${process.platform}' not supported`))
         );
       }
     );
@@ -293,63 +303,70 @@ function uninstallPython(
       cancellable: false,
     },
     (_token) => {
-      return isPythonInstalled().then((isInstalled) => {
-        if (!isInstalled) {
-          return ErrorMsg(`Python ${pythonVersion()} was not installed.`);
-        }
-        if (process.platform === "darwin") {
-          return shellExec(
-            `cat -s ${`${context.extensionPath}/bin/uninstall_python.sh`} | bash -s "${pythonVersion()}"`
-          );
-        }
-        return ErrorMsg(
-          `Unsupported Plattform, uninstall python manually from your system.`
+      if (!isPythonInstalled()) {
+        return new Promise((resolve) =>
+          resolve(ErrorMsg(`Python ${pythonVersion()} was not installed.`))
         );
-      });
+      }
+      if (process.platform === "darwin") {
+        return shellExec(
+          `cat -s ${`${context.extensionPath}/bin/uninstall_python.sh`} | bash -s "${pythonVersion()}"`
+        );
+      }
+      return new Promise((resolve) =>
+        resolve(
+          ErrorMsg(
+            `Unsupported Plattform, uninstall python manually from your system.`
+          )
+        )
+      );
     }
   );
 }
 
-function configure(location?: string, showErrorMsg: boolean = true) {
+function configure(
+  location?: string,
+  showErrorMsg: boolean = true
+): Thenable<void> {
   if (location?.length === 0) {
     throw new Error("No installation path provided");
   }
   vscode.window.showInformationMessage(`Configure python settings`);
-  return isPythonInstalled().then((pyVersion) => {
-    if (!pyVersion && showErrorMsg) {
-      vscode.window.showErrorMessage(`Python is not installed.`);
-      return;
-    }
-    if (pyVersion === false) {
-      return;
-    }
+  const pyVersion = installedPythonVersion();
+  if (!pyVersion && showErrorMsg) {
+    vscode.window.showErrorMessage(`Python is not installed.`);
+    return new Promise((resolve) => resolve(undefined));
+  }
+  if (!pyVersion) {
+    return new Promise((resolve) => resolve(undefined));
+  }
 
-    if (process.platform !== "win32") {
-      execSync(`pyenv global ${pythonVersion()}`);
-    }
-    const configuration = vscode.workspace.getConfiguration();
-    configuration
-      .update(
-        "python.pythonPath",
+  if (process.platform !== "win32") {
+    execSync(`pyenv global ${pythonVersion()}`);
+  }
+  const configuration = vscode.workspace.getConfiguration();
+
+  if (process.platform !== "win32") {
+    configuration.update(
+      "python.venvPath",
+      "~/.pyenv",
+      vscode.ConfigurationTarget.Global
+    );
+  }
+
+  return configuration
+    .update(
+      "python.pythonPath",
+      pyVersion ? location : undefined,
+      vscode.ConfigurationTarget.Global
+    )
+    .then(() => {
+      configuration.update(
+        "python.defaultInterpreterPath",
         pyVersion ? location : undefined,
         vscode.ConfigurationTarget.Global
-      )
-      .then(() => {
-        configuration.update(
-          "python.defaultInterpreterPath",
-          pyVersion ? location : undefined,
-          vscode.ConfigurationTarget.Global
-        );
-      });
-
-    if (process.platform !== "win32") {
-      configuration.update(
-        "python.venvPath",
-        "~/.pyenv",
-        vscode.ConfigurationTarget.Global
       );
-    }
-  });
+    });
 }
 
 function pip(cmd: string) {
@@ -454,14 +471,75 @@ export function activate(context: vscode.ExtensionContext) {
       configurePlayIcons();
     }
   });
-
-  isPythonInstalled().then((pyVersion) => {
-    if (!pyVersion) {
-      if (!configuration.get(Py2GoSettings.SkipInstallationCheck, false)) {
-        if (process.platform === "darwin") {
+  const pyVersion = installedPythonVersion();
+  if (!pyVersion) {
+    if (!configuration.get(Py2GoSettings.SkipInstallationCheck, false)) {
+      if (process.platform === "darwin") {
+        vscode.window
+          .showWarningMessage(
+            `Python ${pythonVersion()} is not installed`,
+            "Install now",
+            "Disable Check"
+          )
+          .then((selection) => {
+            if (selection === "Install now") {
+              return vscode.commands.executeCommand("python2go.install");
+            } else if (selection === "Disable Check") {
+              const conf = vscode.workspace.getConfiguration();
+              conf.update(
+                Py2GoSettings.SkipInstallationCheck,
+                true,
+                vscode.ConfigurationTarget.Global
+              );
+            }
+          });
+      } else {
+        vscode.window
+          .showWarningMessage(
+            `Python not found. Download and install it.`,
+            "Disable Check"
+          )
+          .then((selection) => {
+            if (selection === "Disable Check") {
+              const conf = vscode.workspace.getConfiguration();
+              conf.update(
+                Py2GoSettings.SkipInstallationCheck,
+                true,
+                vscode.ConfigurationTarget.Global
+              );
+            }
+          });
+      }
+    }
+  } else {
+    if (process.platform === "win32") {
+      if (!context.globalState.get("pythonUpdatedPath")) {
+        addUserPathToUsersEnv(pyVersion).then((result) => {
+          if (result.error) {
+            vscode.window.showErrorMessage(
+              "Python could not be added to PATH!"
+            );
+          }
+          if (result.success) {
+            context.globalState.update("pythonUpdatedPath", true);
+          }
+        });
+      }
+      if (!context.globalState.get("pythonConfigured")) {
+        installationLocation().then((result) => {
+          if (result.success) {
+            configure(result.msg).then(() => {
+              context.globalState.update("pythonConfigured", true);
+            });
+          }
+        });
+      }
+    } else if (process.platform === "darwin") {
+      isPyEnvInstalled().then((hasPyenv) => {
+        if (!hasPyenv) {
           vscode.window
             .showWarningMessage(
-              `Python ${pythonVersion()} is not installed`,
+              `Python ${pythonVersion()} is not installed with pyenv`,
               "Install now",
               "Disable Check"
             )
@@ -477,74 +555,10 @@ export function activate(context: vscode.ExtensionContext) {
                 );
               }
             });
-        } else {
-          vscode.window
-            .showWarningMessage(
-              `Python not found. Download and install it.`,
-              "Disable Check"
-            )
-            .then((selection) => {
-              if (selection === "Disable Check") {
-                const conf = vscode.workspace.getConfiguration();
-                conf.update(
-                  Py2GoSettings.SkipInstallationCheck,
-                  true,
-                  vscode.ConfigurationTarget.Global
-                );
-              }
-            });
         }
-      }
-    } else {
-      if (process.platform === "win32") {
-        if (!context.globalState.get("pythonUpdatedPath")) {
-          addUserPathToUsersEnv(pyVersion).then((result) => {
-            if (result.error) {
-              vscode.window.showErrorMessage(
-                "Python could not be added to PATH!"
-              );
-            }
-            if (result.success) {
-              context.globalState.update("pythonUpdatedPath", true);
-            }
-          });
-        }
-        if (!context.globalState.get("pythonConfigured")) {
-          installationLocation().then((result) => {
-            if (result.success) {
-              configure(result.msg).then(() => {
-                context.globalState.update("pythonConfigured", true);
-              });
-            }
-          });
-        }
-      } else if (process.platform === "darwin") {
-        isPyEnvInstalled().then((hasPyenv) => {
-          if (!hasPyenv) {
-            vscode.window
-              .showWarningMessage(
-                `Python ${pythonVersion()} is not installed with pyenv`,
-                "Install now",
-                "Disable Check"
-              )
-              .then((selection) => {
-                if (selection === "Install now") {
-                  return vscode.commands.executeCommand("python2go.install");
-                } else if (selection === "Disable Check") {
-                  const conf = vscode.workspace.getConfiguration();
-                  conf.update(
-                    Py2GoSettings.SkipInstallationCheck,
-                    true,
-                    vscode.ConfigurationTarget.Global
-                  );
-                }
-              });
-          }
-        });
-      }
+      });
     }
-  });
-
+  }
   // The command has been defined in the package.json file
   // Now provide the implementation of the command with registerCommand
   // The commandId parameter must match the command field in package.json
@@ -559,29 +573,28 @@ export function activate(context: vscode.ExtensionContext) {
           cancellable: true,
         },
         (progress, _token) => {
-          return isPythonInstalled().then((wasInstalled) => {
-            progress.report({ message: "Start...", increment: 5 });
-            return installPython(context, progress)
-              .then((result) => {
-                if (!result.success || result.msg.length === 0) {
-                  throw new Error("Installation failed.");
-                }
-                progress.report({ message: "Configure...", increment: 90 });
-                return configure(result.msg);
-              })
-              .then(() => {
-                progress.report({ message: "Success", increment: 100 });
-                if (wasInstalled) {
-                  vscode.window.showInformationMessage(
-                    "Python installed and configured."
-                  );
-                } else {
-                  vscode.window.showInformationMessage(
-                    "!! Restart VS Code now to finish the Python installation !!"
-                  );
-                }
-              });
-          });
+          const wasInstalled = isPythonInstalled();
+          progress.report({ message: "Start...", increment: 5 });
+          return installPython(context, progress)
+            .then((result) => {
+              if (!result.success || result.msg.length === 0) {
+                throw new Error("Installation failed.");
+              }
+              progress.report({ message: "Configure...", increment: 90 });
+              return configure(result.msg);
+            })
+            .then(() => {
+              progress.report({ message: "Success", increment: 100 });
+              if (wasInstalled) {
+                vscode.window.showInformationMessage(
+                  "Python installed and configured."
+                );
+              } else {
+                vscode.window.showInformationMessage(
+                  "!! Restart VS Code now to finish the Python installation !!"
+                );
+              }
+            });
         }
       );
     }
@@ -623,24 +636,22 @@ export function activate(context: vscode.ExtensionContext) {
   let checkInstallationDisposer = vscode.commands.registerCommand(
     "python2go.checkInstallation",
     () => {
-      return isPythonInstalled().then((isInstalled) => {
-        if (isInstalled) {
-          vscode.window.showInformationMessage(
-            `Python ${pythonVersion()} is installed on your system`
-          );
-        } else {
-          vscode.window
-            .showWarningMessage(
-              `Python ${pythonVersion()} is not installed`,
-              "Install now"
-            )
-            .then((selection) => {
-              if (selection === "Install now") {
-                return vscode.commands.executeCommand("python2go.install");
-              }
-            });
-        }
-      });
+      if (isPythonInstalled()) {
+        vscode.window.showInformationMessage(
+          `Python ${pythonVersion()} is installed on your system`
+        );
+      } else {
+        vscode.window
+          .showWarningMessage(
+            `Python ${pythonVersion()} is not installed`,
+            "Install now"
+          )
+          .then((selection) => {
+            if (selection === "Install now") {
+              return vscode.commands.executeCommand("python2go.install");
+            }
+          });
+      }
     }
   );
 
@@ -896,24 +907,23 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage("Only available on windows");
         return;
       }
-      isPythonInstalled().then((version) => {
-        if (!version) {
-          vscode.window.showInformationMessage("Python not installed yet");
-          return;
+      const version = installedPythonVersion();
+      if (!version) {
+        vscode.window.showInformationMessage("Python not installed yet");
+        return;
+      }
+      addUserPathToUsersEnv(version).then((result) => {
+        if (result.error) {
+          vscode.window.showErrorMessage(
+            `Error adding user site to path: ${result.msg}: ${result.error}`
+          );
         }
-        addUserPathToUsersEnv(version).then((result) => {
-          if (result.error) {
-            vscode.window.showErrorMessage(
-              `Error adding user site to path: ${result.msg}: ${result.error}`
-            );
-          }
-          if (result.success) {
-            context.globalState.update("pythonUpdatedPath", true);
-            vscode.window.showInformationMessage(
-              "Successfully added to path. Restart vs code to take effect."
-            );
-          }
-        });
+        if (result.success) {
+          context.globalState.update("pythonUpdatedPath", true);
+          vscode.window.showInformationMessage(
+            "Successfully added to path. Restart vs code to take effect."
+          );
+        }
       });
     }
   );
