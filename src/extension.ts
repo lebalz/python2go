@@ -161,7 +161,11 @@ function installedPythonVersion() {
     let checkerCmd = "python --version";
     if (process.platform === "darwin") {
       checkerCmd = "pyenv --version && python --version";
+    } else if (process.platform !== "win32") {
+      checkerCmd =
+        'eval "$(pyenv init -)" && pyenv --version && python --version';
     }
+
     const result = execSync(checkerCmd).toString().trim();
     if (!result) {
       return;
