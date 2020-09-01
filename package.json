@@ -3,7 +3,7 @@
 	"displayName": "python2go",
 	"publisher": "lebalz",
 	"description": "install and configure python to start straight away",
-	"version": "0.0.42",
+	"version": "0.0.43",
 	"engines": {
 		"vscode": "^1.46.0"
 	},
@@ -30,6 +30,7 @@
 	"activationEvents": [
 		"onStartupFinished",
 		"onCommand:python2go.checkInstallation",
+		"onCommand:python2go.isPythonInstalled",
 		"onCommand:python2go.install"
 	],
 	"main": "./out/extension.js",
