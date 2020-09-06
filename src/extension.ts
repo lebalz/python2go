@@ -34,6 +34,26 @@ interface PyVersion {
   version: string;
 }
 
+function fetchAndInstallGistPips() {
+  clearCached();
+  installPipPackagesFromGist().then((success) => {
+    if (success) {
+      vscode.window
+        .showInformationMessage(
+          `Python Packages updated. Reload to take effect.`,
+          "Reload"
+        )
+        .then((selection) => {
+          if (selection === "Reload") {
+            return vscode.commands.executeCommand(
+              "workbench.action.reloadWindow"
+            );
+          }
+        });
+    }
+  });
+}
+
 function addUserPathToUsersEnv(pyVersion: PyVersion): Thenable<TaskMessage> {
   if (process.platform !== "win32") {
     return new Promise<TaskMessage>((resolve) => resolve(SuccessMsg("OK")));
@@ -475,8 +495,7 @@ export function activate(context: vscode.ExtensionContext) {
       configurePlayIcons();
     }
     if (e.affectsConfiguration("python2go.gistPipUrl")) {
-      clearCached();
-      installPipPackagesFromGist();
+      fetchAndInstallGistPips();
     }
   });
   const pyVersion = installedPythonVersion();
@@ -566,7 +585,7 @@ export function activate(context: vscode.ExtensionContext) {
         }
       });
     }
-    installPipPackagesFromGist();
+    fetchAndInstallGistPips();
   }
   // The command has been defined in the package.json file
   // Now provide the implementation of the command with registerCommand
@@ -977,7 +996,10 @@ export function activate(context: vscode.ExtensionContext) {
         (t) => t.name === PYTHON2GO_TERMINAL_NAME
       );
       const editor = vscode.window.activeTextEditor;
-      const text = editor?.document.getText(editor.selection).trim();
+      const text = editor?.document
+        .getText(editor.selection)
+        .trim()
+        .replace(/\n(\s*\n)+/g, "\n");
       if (ipyTerminal) {
         ipyTerminal.show();
         if (text) {
