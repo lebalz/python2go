@@ -3,6 +3,12 @@ import * as vscode from "vscode";
 import { default as axios } from "axios";
 import { isPythonInstalled } from "./extension";
 
+interface Version {
+  major: number;
+  minor: number;
+  patch: number;
+}
+
 interface PipPackage {
   package: string;
   version: string;
@@ -17,6 +23,8 @@ let pipPackagesCached: ToInstallPipPackage[] = [];
 export function clearCached() {
   pipPackagesCached.splice(0);
 }
+
+const VERSION_REGEX = /(?<major>\d+)\.(?<minor>\d+)\.?(?<patch>.+)?/i;
 
 const LE = "<=";
 const GE = ">=";
@@ -53,17 +61,58 @@ function pipPackagesFromGist(): Promise<ToInstallPipPackage[]> {
     });
 }
 
+function parseVersion(versionString: string): Version {
+  if (!versionString) {
+    return { major: Number.NaN, minor: Number.NaN, patch: Number.NaN };
+  }
+  const version = versionString.match(VERSION_REGEX);
+  if (!version || !version.groups) {
+    return { major: Number.NaN, minor: Number.NaN, patch: Number.NaN };
+  }
+  return {
+    major: Number.parseInt(version.groups["major"], 10),
+    minor: Number.parseInt(version.groups["minor"], 10),
+    patch: Number.parseInt(version.groups["patch"], 10),
+  };
+}
+
 function wrongVersion(installed: PipPackage, requested: ToInstallPipPackage) {
   if (!requested.version) {
     return false;
   }
+  const currentVersion = parseVersion(installed.version);
+  const requestedVersion = parseVersion(requested.version);
+  if (
+    requestedVersion.major === undefined ||
+    currentVersion.major === undefined
+  ) {
+    return false;
+  }
   if (requested.version.startsWith(GE)) {
     // it's the wrong version, when the installed version is lower than the requested.
-    return requested.version!.slice(2) > installed.version;
+    if (requestedVersion.major > currentVersion.major) {
+      return true;
+    }
+    if (requestedVersion.minor > currentVersion.minor) {
+      return true;
+    }
+    if (requestedVersion.patch > currentVersion.patch) {
+      return true;
+    }
+    return false;
   }
   if (requested.version.startsWith(LE)) {
     // it's the wrong version, when the installed version is higher than the requested.
-    return requested.version!.slice(2) < installed.version;
+    if (requestedVersion.major < currentVersion.major) {
+      return true;
+    }
+    if (requestedVersion.minor < currentVersion.minor) {
+      return true;
+    }
+    if (requestedVersion.patch < currentVersion.patch) {
+      return true;
+    }
+    return false;
   }
   return requested.version !== installed.version;
 }
