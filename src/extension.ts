@@ -11,7 +11,6 @@ import { inOsShell } from "./lib/osShell";
 import { installPipPackagesFromGist, clearCached } from "./pipFromGist";
 
 export enum Py2GoSettings {
-  SkipInstallationCheck = "python2go.skipInstallationCheck",
   PythonVersion = "python2go.pythonVersion",
 }
 
@@ -26,6 +25,11 @@ interface PyVersion {
 }
 
 function fetchAndInstallGistPips() {
+  const config = vscode.workspace.getConfiguration();
+  const skip = config.get("python2go.skipPipsFromGist", false);
+  if (skip) {
+    return;
+  }
   clearCached();
   installPipPackagesFromGist().then((success) => {
     if (success) {
@@ -194,7 +198,6 @@ function disablePlayIcons() {
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
   Logger.configure("python2go", "Python2Go");
-  Logger.log("Welcome to Python2Go");
   configurePlayIcons();
 
   vscode.workspace.onDidChangeConfiguration((e) => {
