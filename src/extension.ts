@@ -70,23 +70,23 @@ function setContext(pyVersion: PyVersion | false) {
 
 function getPythonPath(): Promise<string> {
   try {
-      const extension = vscode.extensions.getExtension("ms-python.python");
-      if (!extension) {
-          return new Promise((resolve) => resolve('python'));
-      }
-      const usingNewInterpreterStorage = extension.packageJSON?.featureFlags?.usingNewInterpreterStorage;
-      if (usingNewInterpreterStorage) {
-        return new Promise((resolve) => {
-          if (!extension.isActive) {
-              return extension.activate();
-          }
-          return resolve('ok');
-        }).then(() => {
-          return extension.exports.settings.getExecutionDetails().execCommand[0];
-        });
-      } else {
-        return new Promise((resolve) => resolve('python'));
-      }
+    const extension = vscode.extensions.getExtension("ms-python.python");
+    if (!extension) {
+      return new Promise((resolve) => resolve('python'));
+    }
+    const usingNewInterpreterStorage = extension.packageJSON?.featureFlags?.usingNewInterpreterStorage;
+    if (usingNewInterpreterStorage) {
+      return new Promise((resolve) => {
+        if (!extension.isActive) {
+          return extension.activate();
+        }
+        return resolve('ok');
+      }).then(() => {
+        return extension.exports.settings.getExecutionDetails().execCommand[0];
+      });
+    } else {
+      return new Promise((resolve) => resolve('python'));
+    }
   } catch (error) {
     console.log('failed to load exec path', error);
     return new Promise((resolve) => resolve('python'));
@@ -95,19 +95,15 @@ function getPythonPath(): Promise<string> {
 
 function installedPythonVersion() {
   return getPythonPath().then((interpreter) => {
-    console.log('defIn', interpreter);
     let rawVersion = '';
     try {
       rawVersion = execSync(`${interpreter} --version`).toString().trim();
-      console.log('rawVersion: ', rawVersion);
     } catch (exception) {
-      console.log('E rawVersion: ', exception);
       return;
     }
     const version = parsePythonVersion(rawVersion);
-    console.log('Version: ', version);
     return version;
-  })
+  });
 }
 
 
@@ -126,8 +122,8 @@ export function isPythonInstalled() {
       setContext(version);
       return true;
     }
-      setContext(false);
-      return false;
+    setContext(false);
+    return false;
   });
 }
 
@@ -139,17 +135,6 @@ function pip(cmd: string) {
       requiredCmd: pipCmd
     });
   });
-}
-
-function sudoPip(cmd: string) {
-  return getPythonPath().then((py) => {
-    const pipCmd = `${py} -m pip`;
-    return inOsShell(`${pipCmd} --disable-pip-version-check ${cmd}`, {
-      requiredCmd: pipCmd,
-      sudo: true,
-      promptMsg: `to execute "sudo pip3 ${cmd}"`
-    });
-  })
 }
 
 function installedPipPackages(): Thenable<
@@ -227,21 +212,21 @@ export function activate(context: vscode.ExtensionContext) {
   isPythonInstalled().then((hasPython) => {
     installedPythonVersion().then((pyVersion) => {
       if (!hasPython) {
-          if (process.platform === "darwin") {
-            vscode.window
-              .showWarningMessage(
-                `A Python Interpreter > 3.6 is required, found "${pyVersion?.version}"`,
-              );
-            vscode.commands.executeCommand('python.setInterpreter');
-          } else {
-            vscode.window
-              .showWarningMessage(
-                `A Python Interpreter > 3.6 is required, found "${pyVersion?.version}"`
-              );
-              vscode.commands.executeCommand('python.setInterpreter');
-            }
+        if (process.platform === "darwin") {
+          vscode.window
+            .showWarningMessage(
+              `A Python Interpreter > 3.6 is required, found "${pyVersion?.version}"`,
+            );
+          vscode.commands.executeCommand('python.setInterpreter');
+        } else {
+          vscode.window
+            .showWarningMessage(
+              `A Python Interpreter > 3.6 is required, found "${pyVersion?.version}"`
+            );
+          vscode.commands.executeCommand('python.setInterpreter');
+        }
       } else {
-        fetchAndInstallGistPips(); 
+        fetchAndInstallGistPips();
       }
     });
   });
@@ -287,30 +272,6 @@ export function activate(context: vscode.ExtensionContext) {
         },
         (progress) => {
           return pip(command).then((result) => {
-            if (result.success) {
-              progress.report({ message: "Success", increment: 100 });
-              vscode.window.showInformationMessage(
-                `[Python2go]: Successfully executed "pip ${command}"`
-              );
-            } else {
-              vscode.window.showErrorMessage(`pip ${command}: ${result.error}`);
-            }
-          });
-        }
-      );
-    }
-  );
-
-  let sudoPipInstaller = vscode.commands.registerCommand(
-    "python2go.sudoPip",
-    (command) => {
-      return vscode.window.withProgress(
-        {
-          location: vscode.ProgressLocation.Notification,
-          title: `[Python2go]: pip ${command}`,
-        },
-        (progress) => {
-          return sudoPip(command).then((result) => {
             if (result.success) {
               progress.report({ message: "Success", increment: 100 });
               vscode.window.showInformationMessage(
@@ -552,33 +513,33 @@ export function activate(context: vscode.ExtensionContext) {
     "python2go.show_ipython",
     () => {
       getPythonPath().then((py) => {
-          const ipyTerminal = vscode.window.terminals.find(
-            (t) => t.name === PYTHON2GO_TERMINAL_NAME
-          );
-          const editor = vscode.window.activeTextEditor;
-          const text = editor?.document
-            .getText(editor.selection)
-            .trim()
-            .replace(/\n(\s*\n)+/g, "\n");
-          if (ipyTerminal) {
-            ipyTerminal.show();
-            if (text) {
-              ipyTerminal.sendText(text, true);
-            }
-            return;
+        const ipyTerminal = vscode.window.terminals.find(
+          (t) => t.name === PYTHON2GO_TERMINAL_NAME
+        );
+        const editor = vscode.window.activeTextEditor;
+        const text = editor?.document
+          .getText(editor.selection)
+          .trim()
+          .replace(/\n(\s*\n)+/g, "\n");
+        if (ipyTerminal) {
+          ipyTerminal.show();
+          if (text) {
+            ipyTerminal.sendText(text, true);
           }
-          const terminal = vscode.window.createTerminal({
-            name: PYTHON2GO_TERMINAL_NAME,
-          });
-          terminal.show();
-          setTimeout(() => {
-            terminal.sendText(`${py} -m IPython`, true);
-            if (text) {
-              terminal.sendText(text, true);
-            }
-          }, 200);
+          return;
+        }
+        const terminal = vscode.window.createTerminal({
+          name: PYTHON2GO_TERMINAL_NAME,
         });
-      }
+        terminal.show();
+        setTimeout(() => {
+          terminal.sendText(`${py} -m IPython`, true);
+          if (text) {
+            terminal.sendText(text, true);
+          }
+        }, 200);
+      });
+    }
   );
 
   context.subscriptions.push(runDebugDisposer);
@@ -588,7 +549,6 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(checkInstallationDisposer);
   context.subscriptions.push(isPyInstalled);
   context.subscriptions.push(pipInstaller);
-  context.subscriptions.push(sudoPipInstaller);
   context.subscriptions.push(pipPackages);
   context.subscriptions.push(pipUpgradeSelfDisposer);
   context.subscriptions.push(pipInstallDisposer);
@@ -597,4 +557,4 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 // this method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() { }
