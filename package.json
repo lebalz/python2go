@@ -3,9 +3,9 @@
 	"displayName": "python2go",
 	"publisher": "lebalz",
 	"description": "install and configure python to start straight away",
-	"version": "0.0.48",
+	"version": "0.0.49",
 	"engines": {
-		"vscode": "^1.46.0"
+		"vscode": "^1.59.0"
 	},
 	"homepage": "https://github.com/lebalz/python2go/blob/master/README.md",
 	"bugs": {
@@ -30,17 +30,11 @@
 	"activationEvents": [
 		"onStartupFinished",
 		"onCommand:python2go.checkInstallation",
-		"onCommand:python2go.isPythonInstalled",
-		"onCommand:python2go.install"
+		"onCommand:python2go.isPythonInstalled"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
 		"commands": [
-			{
-				"command": "python2go.install",
-				"category": "Python2Go",
-				"title": "Install"
-			},
 			{
 				"command": "python2go.checkInstallation",
 				"category": "Python2Go",
@@ -62,29 +56,9 @@
 				"title": "pip upgrade package (latest version)"
 			},
 			{
-				"command": "python2go.configure",
-				"category": "Python2Go",
-				"title": "Configure"
-			},
-			{
-				"command": "python2go.uninstall",
-				"category": "Python2Go",
-				"title": "Uninstall Python"
-			},
-			{
 				"command": "python2go.pipUpgradeSelf",
 				"category": "Python2Go",
 				"title": "Upgrade pip"
-			},
-			{
-				"command": "python2go.setPythonVersion",
-				"category": "Python2Go",
-				"title": "Set Python version"
-			},
-			{
-				"command": "python2go.addPipUserPathToEnv",
-				"category": "Python2Go",
-				"title": "Add the local --user path to the env (win only)"
 			},
 			{
 				"command": "python2go.run_debug",
@@ -116,14 +90,6 @@
 		],
 		"menus": {
 			"commandPalette": [
-				{
-					"command": "python2go.configure",
-					"when": "python2go:isPythonInstalled"
-				},
-				{
-					"command": "python2go.uninstall",
-					"when": "python2go:isPythonInstalled"
-				},
 				{
 					"command": "python2go.show_ipython",
 					"when": "python2go:isPythonInstalled"
@@ -157,11 +123,6 @@
 					"type": "boolean",
 					"default": false,
 					"description": "Wheter to check if python is installed and on path (using pyenv on osx)."
-				},
-				"python2go.pythonVersion": {
-					"type": "string",
-					"default": "3.8.3",
-					"description": "The python version which will be installed"
 				},
 				"python2go.showExplorerViewOnDebugEnd": {
 					"type": "boolean",
@@ -214,20 +175,20 @@
 	},
 	"devDependencies": {
 		"@types/glob": "^7.1.1",
-		"@types/mocha": "^7.0.2",
-		"@types/node": "^13.11.0",
+		"@types/mocha": "^9.0.0",
+		"@types/node": "^16.4.13",
 		"@types/vscode": "^1.46.0",
-		"@typescript-eslint/eslint-plugin": "^2.30.0",
-		"@typescript-eslint/parser": "^2.30.0",
-		"eslint": "^6.8.0",
+		"@typescript-eslint/eslint-plugin": "^4.29.1",
+		"@typescript-eslint/parser": "^4.29.1",
+		"eslint": "^7.32.0",
 		"glob": "^7.1.6",
-		"mocha": "^7.1.2",
-		"typescript": "^3.8.3",
+		"mocha": "^9.0.3",
+		"typescript": "^4.3.5",
 		"vscode-test": "^1.3.0"
 	},
 	"dependencies": {
-		"@types/node-powershell": "^3.1.1",
-		"axios": "^0.19.0",
+		"@types/node-powershell": "^4.0.1",
+		"axios": "^0.21.1",
 		"node-powershell": "^4.0.0"
 	}
 }

@@ -1,4 +1,4 @@
-import { Logger } from "./package-manager/src/logger";
+import { Logger } from "./lib/logger";
 import * as vscode from "vscode";
 import { default as axios } from "axios";
 import { isPythonInstalled } from "./extension";
