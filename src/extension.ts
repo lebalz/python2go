@@ -24,27 +24,33 @@ interface PyVersion {
   version: string;
 }
 
-function fetchAndInstallGistPips() {
+function fetchAndInstallGistPips(force: boolean = false) {
   const config = vscode.workspace.getConfiguration();
   const skip = config.get("python2go.skipPipsFromGist", false);
-  if (skip) {
+  if (skip && !force) {
     return;
   }
   clearCached();
-  installPipPackagesFromGist().then((success) => {
-    if (success) {
-      vscode.window
-        .showInformationMessage(
-          `Python Packages updated. Reload to take effect.`,
-          "Reload"
-        )
-        .then((selection) => {
-          if (selection === "Reload") {
-            return vscode.commands.executeCommand(
-              "workbench.action.reloadWindow"
-            );
-          }
-        });
+  installPipPackagesFromGist().then((result) => {
+    if (result.success) {
+      if (result.reloadRequired) {
+        vscode.window
+          .showInformationMessage(
+            `Python Packages updated. Reload to take effect.`,
+            "Reload"
+          )
+          .then((selection) => {
+            if (selection === "Reload") {
+              return vscode.commands.executeCommand(
+                "workbench.action.reloadWindow"
+              );
+            }
+          });
+      } else {
+        vscode.window.showInformationMessage(`Python Packages already uo to date`);        
+      }
+    } else {
+      vscode.window.showErrorMessage(`Failed to install pips from gist:\n${result.msg}`);
     }
   });
 }
@@ -198,6 +204,7 @@ function disablePlayIcons() {
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
   Logger.configure("python2go", "Python2Go");
+  Logger.log("Python2go avtivated");
   configurePlayIcons();
 
   vscode.workspace.onDidChangeConfiguration((e) => {
@@ -211,25 +218,36 @@ export function activate(context: vscode.ExtensionContext) {
     if (e.affectsConfiguration("python2go.gistPipUrl")) {
       fetchAndInstallGistPips();
     }
+    if (e.affectsConfiguration("python2go.skipPipsFromGist")) {
+      fetchAndInstallGistPips();
+    }
   });
   isPythonInstalled().then((hasPython) => {
     installedPythonVersion().then((pyVersion) => {
-      if (!hasPython) {
+      if (hasPython) {
+        fetchAndInstallGistPips();
+      } else {
         if (process.platform === "darwin") {
           vscode.window
             .showWarningMessage(
               `A Python Interpreter > 3.6 is required, found "${pyVersion?.version}"`,
-            );
-          vscode.commands.executeCommand('python.setInterpreter');
+              "Select Interpreter"
+            ).then((selection) => {
+              if (selection === "Select Interpreter") {
+                return vscode.commands.executeCommand('python.setInterpreter');
+              }
+            });
         } else {
           vscode.window
             .showWarningMessage(
-              `A Python Interpreter > 3.6 is required, found "${pyVersion?.version}"`
-            );
-          vscode.commands.executeCommand('python.setInterpreter');
+              `A Python Interpreter > 3.6 is required, found "${pyVersion?.version}"`,
+              "Select Interpreter"
+            ).then((selection) => {
+              if (selection === "Select Interpreter") {
+                return vscode.commands.executeCommand('python.setInterpreter');
+              }
+            });
         }
-      } else {
-        fetchAndInstallGistPips();
       }
     });
   });
@@ -237,6 +255,20 @@ export function activate(context: vscode.ExtensionContext) {
   // Now provide the implementation of the command with registerCommand
   // The commandId parameter must match the command field in package.json
 
+
+  let fetchGistPipsDisposer = vscode.commands.registerCommand(
+    "python2go.fetchGistPips",
+    () => {
+      isPythonInstalled().then(isInstalled => {
+        if (isInstalled) {
+          return fetchAndInstallGistPips(true);
+        } else {
+          vscode.window
+            .showWarningMessage(
+              `No Python Interpreter is selected`
+            );}
+      });
+    });
 
   let checkInstallationDisposer = vscode.commands.registerCommand(
     "python2go.checkInstallation",
@@ -247,7 +279,7 @@ export function activate(context: vscode.ExtensionContext) {
             vscode.window.showInformationMessage(
               `Python Interpreter ${version?.version} is used`
             );
-          })
+          });
         } else {
           vscode.window
             .showWarningMessage(
@@ -557,6 +589,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(pipInstallDisposer);
   context.subscriptions.push(pipUpgradePackageDisposer);
   context.subscriptions.push(pipUninstallDisposer);
+  context.subscriptions.push(fetchGistPipsDisposer);
 }
 
 // this method is called when your extension is deactivated

@@ -3,7 +3,7 @@
 	"displayName": "python2go",
 	"publisher": "lebalz",
 	"description": "install and configure python to start straight away",
-	"version": "0.0.51",
+	"version": "0.0.52",
 	"engines": {
 		"vscode": "^1.56.0"
 	},
@@ -29,9 +29,9 @@
 	],
 	"activationEvents": [
 		"onStartupFinished",
-		"onCommand:python.setInterpreter",
 		"onCommand:python2go.checkInstallation",
-		"onCommand:python2go.isPythonInstalled"
+		"onCommand:python2go.isPythonInstalled",
+		"onCommand:python2go.fetchGistPips"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -40,6 +40,11 @@
 				"command": "python2go.checkInstallation",
 				"category": "Python2Go",
 				"title": "Check Installation"
+			},
+			{
+				"command": "python2go.fetchGistPips",
+				"category": "Python2Go",
+				"title": "Fetch and install pips from gist url"
 			},
 			{
 				"command": "python2go.pipInstall",
