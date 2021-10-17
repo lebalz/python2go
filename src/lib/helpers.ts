@@ -46,7 +46,7 @@ export function parsePythonVersion(rawVersion?: string) {
     return;
   }
   const res = rawVersion.match(
-    /Python (?<major>\d)\.(?<minor>\d)\.(?<release>\d)/
+    /Python (?<major>\d)\.(?<minor>\d+)\.(?<release>\d+)/
   );
   if (
     !res ||
