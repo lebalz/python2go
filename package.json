@@ -3,7 +3,7 @@
 	"displayName": "python2go",
 	"publisher": "lebalz",
 	"description": "install and configure python to start straight away",
-	"version": "0.0.51",
+	"version": "0.0.52",
 	"engines": {
 		"vscode": "^1.56.0"
 	},
@@ -30,7 +30,8 @@
 	"activationEvents": [
 		"onStartupFinished",
 		"onCommand:python2go.checkInstallation",
-		"onCommand:python2go.isPythonInstalled"
+		"onCommand:python2go.isPythonInstalled",
+		"onCommand:python2go.fetchGistPips"
 	],
 	"main": "./out/extension.js",
 	"contributes": {
@@ -39,6 +40,11 @@
 				"command": "python2go.checkInstallation",
 				"category": "Python2Go",
 				"title": "Check Installation"
+			},
+			{
+				"command": "python2go.fetchGistPips",
+				"category": "Python2Go",
+				"title": "Fetch and install pips from gist url"
 			},
 			{
 				"command": "python2go.pipInstall",
@@ -98,13 +104,13 @@
 			"editor/title": [
 				{
 					"command": "python2go.run_debug",
-					"title": "Execute program",
+					"title": "Run program in debug mode",
 					"group": "navigation",
 					"when": "python2go:isPythonInstalled && resourceLangId == python && python2go.showGreenPlayIcon"
 				},
 				{
 					"command": "python2go.run_and_stop",
-					"title": "Execute program and wait at the begin",
+					"title": "Run program in debug mode and wait at the begin",
 					"group": "navigation",
 					"when": "python2go:isPythonInstalled && resourceLangId == python && python2go.showYellowPlayIcon"
 				},
@@ -119,11 +125,6 @@
 		"configuration": {
 			"title": "Python2Go",
 			"properties": {
-				"python2go.skipInstallationCheck": {
-					"type": "boolean",
-					"default": false,
-					"description": "Wheter to check if python is installed and on path (using pyenv on osx)."
-				},
 				"python2go.showExplorerViewOnDebugEnd": {
 					"type": "boolean",
 					"default": true,
@@ -161,6 +162,11 @@
 					"type": "string",
 					"default": "",
 					"description": "Specify a gist url containing the pip packages you want to be installed. See https://gist.github.com/lebalz/22b59234e928119f8a72ff2d1ae32c08 for an example"
+				},
+				"python2go.skipPipsFromGist": {
+					"type": "boolean",
+					"default": false,
+					"description": "When set to true, no pips will be installed automatically, even a gistPipUrl is given."
 				}
 			}
 		}

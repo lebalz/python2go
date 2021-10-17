@@ -155,14 +155,20 @@ function uninstallWrongPipVersions() {
     });
 }
 
-export function installPipPackagesFromGist(): Thenable<boolean> {
+interface PipGistState {
+  reloadRequired: boolean;
+  success: boolean;
+  msg?: string;
+}
+
+export function installPipPackagesFromGist(): Thenable<PipGistState> {
   if (!isPythonInstalled()) {
-    return new Promise((resolve) => resolve(false));
+    return new Promise((resolve) => resolve({reloadRequired: false, success: false, msg: 'No valid python interpreter set.'}));
   }
   const config = vscode.workspace.getConfiguration();
   const gistUrl = config.get("python2go.gistPipUrl");
   if (!gistUrl || gistUrl === "") {
-    return new Promise((resolve) => resolve(false));
+    return new Promise((resolve) => resolve({reloadRequired: false, success: false, msg: 'No python2go.gistPipUrl specified'}));
   }
   return uninstallWrongPipVersions()
     .then(() => {
@@ -180,7 +186,7 @@ export function installPipPackagesFromGist(): Thenable<boolean> {
       });
     })
     .then(
-      (packages): Thenable<boolean> => {
+      (packages): Thenable<PipGistState> => {
         const toInstall = packages.toInstall.filter(
           (pkg) =>
             !packages.installed.some(
@@ -199,9 +205,9 @@ export function installPipPackagesFromGist(): Thenable<boolean> {
               "python2go.pip",
               `install ${target} ${toInstallPkgs.join(" ")}`
             )
-            .then(() => new Promise((resolve) => resolve(true)));
+            .then(() => new Promise((resolve) => resolve({reloadRequired: true, success: true})));
         }
-        return new Promise((resolve) => resolve(false));
+        return new Promise((resolve) => resolve({reloadRequired: false, success: true}));
       }
     )
     .then(
@@ -210,7 +216,7 @@ export function installPipPackagesFromGist(): Thenable<boolean> {
       },
       (err) => {
         console.log(err);
-        return false;
+        return {reloadRequired: false, success: false, msg: err};
       }
     );
 }
